@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1117">
+<title>DEEPSTATE WAR SANDBOX</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--ua:#0275d8;--ru:#d9534f;
+        --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px)}
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6edf3;font-family:system-ui,sans-serif;overscroll-behavior:none}
+  #map{position:absolute;inset:0;background:var(--bg)}
+  .ov{position:fixed;left:0;right:0;z-index:1100;background:rgba(13,17,23,.94);backdrop-filter:blur(6px)}
+  #head{top:0;height:calc(44px + var(--st));padding:var(--st) 12px 0;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+  #strip{top:calc(44px + var(--st));padding:6px 12px;border-bottom:1px solid var(--line)}
+  #log{max-height:28vh;overflow-y:auto;font-size:12px;margin-top:6px;display:none}
+  #log.open{display:block}
+  #bar{position:fixed;bottom:0;padding:6px 8px calc(6px + var(--sb));display:flex;gap:6px;border-top:1px solid var(--line)}
+  #opts{bottom:calc(60px + var(--sb));padding:8px 10px;border-top:1px solid var(--line);display:none;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+  #opts.show{display:flex}
+  .tb{flex:1;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:20px;line-height:1}
+  .tb small{display:block;font-size:10px;margin-top:3px;color:#9aa4af}
+  .tb.on{border-color:var(--ua);background:#0b2a4a}
+  .chip{min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:18px;background:var(--panel);font-size:13px}
+  .chip.on{border-color:#58a6ff;background:#0b2a4a}
+  .chip.red.on{border-color:var(--ru);background:#3a1614}
+  .city{pointer-events:none}
+  .city::before{content:'';position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e6edf3;box-shadow:0 0 3px #000}
+  .city span{position:absolute;transform:translate(-50%,5px);white-space:nowrap;color:#e6edf3;font:600 11px system-ui,sans-serif;text-shadow:0 0 3px #000,0 0 3px #000,0 0 5px #000}
+  .city.p1 span{font-size:13px;font-weight:700}
+  .city.vil span{font-size:10px;font-weight:600;color:#cfd6dd}
+  .city.vil::before{width:4px;height:4px;margin:-2px 0 0 -2px;background:#7fb5ff}
+  .city.vil.ru::before{background:#ff8a80}
+  .city.vil.h span{font-size:9px;font-weight:500;opacity:.9}
+  #searchBox{display:none;top:calc(122px + var(--st));left:8px;right:64px;padding:10px;border:1px solid var(--line);border-radius:12px}
+  #searchBox.show{display:block}
+  .qr{padding:8px 6px;border-bottom:1px solid var(--line)}
+  .qr small{color:#9aa4af}
+  .qr:active{background:#1f2630}
+  .pin{position:absolute;transform:translate(-50%,-100%);text-align:center;white-space:nowrap;pointer-events:none}
+  .pin b{display:block;font-size:26px;line-height:1;filter:drop-shadow(0 2px 2px #000)}
+  .pin span{display:inline-block;background:rgba(13,17,23,.9);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font:600 12px system-ui,sans-serif}
+  .oblast{pointer-events:none}
+  .oblast span{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;color:#eef2f6;font:italic 600 10px system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.75;text-shadow:0 0 3px #000,0 0 4px #000}
+  #side{max-height:calc(100% - 190px);overflow-y:auto;scrollbar-width:none;padding:2px}
+  #side::-webkit-scrollbar{display:none}
+  .arrow-line{stroke-dasharray:1 14;animation:dash .8s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-15}}
+  #side{position:fixed;right:10px;top:calc(122px + var(--st));z-index:1100;display:flex;flex-direction:column;gap:8px}
+  .fab{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(13,17,23,.9);font-size:20px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .leaflet-kill-pane{filter:drop-shadow(0 0 3px rgba(150,160,172,.18))}   /* м'яке світіння зони */
+  #fpvBox{max-height:50vh;overflow-y:auto;display:none;top:calc(122px + var(--st));left:8px;right:64px;padding:10px;border:1px solid var(--line);border-radius:12px}
+  #fpvBox.show{display:block}
+  #fpvMini{display:none;top:calc(122px + var(--st));left:8px;right:64px;padding:6px 8px;border:1px solid #ffb020;border-radius:12px;align-items:center;gap:8px}
+  #fpvMini.show{display:flex}
+  .fab.on{border-color:#ffb020;background:#3a2a08}
+  #menu{display:none;left:auto;right:64px;top:calc(122px + var(--st));z-index:1150;width:min(330px,calc(100vw - 80px));max-height:calc(100% - 200px);overflow-y:auto;padding:10px;border:1px solid var(--line);border-radius:12px}
+  #menu.show{display:block}
+  .msec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9aa4af;margin:12px 0 6px}
+  .msec:first-child{margin-top:0}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #menu .fab{width:auto;height:46px;border-radius:10px;display:flex;align-items:center;gap:8px;padding:0 10px;text-align:left;box-shadow:none;font-size:13px}
+  #menu .fab .ic{font-size:20px;flex:none}
+  #menu .fab .lb{line-height:1.1}
+  #srcUrl{font-size:14px;background:#0d1117;border:1px solid var(--line);color:#e6edf3;border-radius:8px;padding:8px}
+  .fpv-pin svg,.fpv-fl svg{position:absolute;transform:translate(-50%,-50%);overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.7))}
+  .boom .sc{transform:scale(var(--s))}.boom .sc>*{position:absolute;left:0;top:0}
+  .fpv-pin span{position:absolute;transform:translate(-50%,28px);white-space:nowrap;background:rgba(13,17,23,.9);border:1px solid #ffb020;border-radius:6px;padding:1px 6px;font:600 11px system-ui,sans-serif;color:#ffd58a}
+  .leaflet-borders-pane path{shape-rendering:geometricPrecision;stroke-linejoin:round}
+  .jet{cursor:crosshair}
+  .jet-in{width:40px;height:40px;margin:2px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.55))}
+  .boom{pointer-events:none}
+  .boom>*{position:absolute;left:0;top:0}
+  .b-flash{width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;background:radial-gradient(circle,#fff 0,rgba(255,240,180,.9) 30%,rgba(255,150,40,0) 70%);animation:bflash .45s ease-out forwards}
+  @keyframes bflash{from{transform:scale(.2);opacity:1}to{transform:scale(1.6);opacity:0}}
+  .b-ball{width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ffe9a0,#ff9a1f 45%,#c8300f 80%,rgba(60,20,10,0));animation:bball .9s ease-out forwards}
+  @keyframes bball{0%{transform:scale(.1);opacity:1}50%{transform:scale(1.3);opacity:.95}100%{transform:scale(1.9);opacity:0}}
+  .b-spark{width:3px;height:3px;margin:-1.5px;border-radius:50%;background:#ffd25a;box-shadow:0 0 5px #ff8a00;transform:rotate(var(--a));animation:bspark .7s ease-out forwards}
+  @keyframes bspark{to{transform:rotate(var(--a)) translateX(var(--d));opacity:0}}
+  .b-deb{width:var(--w);height:var(--h);margin:-3px;background:#7e858c;border:1px solid #444;animation:bdeb 1.1s cubic-bezier(.2,.7,.4,1) forwards}
+  @keyframes bdeb{to{transform:translate(var(--dx),calc(var(--dy) + 26px)) rotate(var(--r));opacity:0}}
+  .b-smoke{width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,rgba(40,40,40,.7),rgba(40,40,40,0) 70%);animation:bsmoke 2.6s ease-out forwards}
+  @keyframes bsmoke{from{transform:scale(.4) translateY(0);opacity:.9}to{transform:scale(2.6) translateY(-16px);opacity:0}}
+  .fab{position:relative}
+  .fab.off{opacity:.45}
+  .cn-lbl span{position:absolute;transform:translate(-50%,-50%);font:700 12px system-ui,sans-serif;color:#ffd166;white-space:nowrap;text-shadow:0 0 3px #000,0 0 3px #000}
+  .ds-mk .def{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;background:#0275d8;border:2px solid #fff;border-radius:50%;filter:drop-shadow(0 0 3px #000)}
+  .ds-mk em{position:absolute;transform:translate(-50%,16px);font:700 10px system-ui,sans-serif;font-style:normal;white-space:nowrap;color:#9ec7ff;text-shadow:0 0 3px #000,0 0 3px #000}
+  .ds-mk em.atk{transform:translate(-50%,-22px);color:#ff9a96}
+  .fab[data-w]::after{content:attr(data-w);position:absolute;right:-2px;bottom:-2px;font-size:10px;line-height:1;background:#fff;color:#000;border-radius:8px;padding:2px 4px;font-weight:700}
+  #saveSheet{display:none;top:calc(122px + var(--st));left:8px;right:64px;padding:10px;border:1px solid var(--line);border-radius:12px}
+  #saveSheet.show{display:block}
+  .leaflet-bottom{bottom:calc(64px + var(--sb))}
+  body.ui-off #menu,body.ui-off #searchBox,body.ui-off #fpvBox,body.ui-off #fpvMini,body.ui-off #saveSheet,body.ui-off #head,body.ui-off #strip,body.ui-off #opts,body.ui-off #bar,body.ui-off .fab:not(#uiToggle){display:none}
+  body.ui-off #side{top:calc(10px + var(--st))}
+  body.ui-off .leaflet-top{margin-top:var(--st)}
+  body.ui-off .leaflet-bottom{bottom:var(--sb)}
+  body.ui-off #uiToggle{opacity:.6}
+  .leaflet-top{margin-top:calc(118px + var(--st))}
+  .leaflet-control-attribution{font-size:9px}
+  @media (max-width:640px){.leaflet-control-zoom{display:none}}
+  @media (prefers-reduced-motion:reduce){.arrow-line{animation:none}}
+  button{color:inherit;font:inherit;-webkit-tap-highlight-color:transparent}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Хедер -->
+<header id="head" class="ov">
+  <b class="text-[15px] tracking-wide truncate">DEEPSTATE WAR SANDBOX</b>
+  <button id="reset" class="chip ml-auto shrink-0">⟲ <span class="hidden sm:inline">Скинути до реального фронту</span><span class="sm:hidden">Скинути</span></button>
+</header>
+
+<!-- Статистика (тап — відкрити журнал) -->
+<section id="strip" class="ov" role="button" tabindex="0">
+  <div class="flex h-2.5 rounded overflow-hidden"><div id="barUa" style="background:var(--ua);width:100%"></div><div id="barKill" style="background:#a9b0b8;width:0"></div><div id="barRu" style="background:var(--ru);width:0"></div></div>
+  <div class="flex justify-between items-baseline text-[13px] mt-1 gap-2">
+    <span>ЗСУ <b id="pUa">–</b></span>
+    <span>☠ <b id="pKill">–</b></span>
+    <span>Окупація <b id="pRu">–</b></span>
+  </div>
+  <div id="status" class="text-[11px] text-yellow-400 truncate">Завантаження…</div>
+  <div id="log"></div>
+</section>
+
+<!-- Налаштування інструмента -->
+<div id="opts" class="ov">
+  <div id="brushOpts" class="flex gap-2 flex-wrap items-center w-full">
+    <span id="radiusOpts" class="flex gap-2 items-center">
+      <button class="chip on" data-r="10">10 км</button><button class="chip" data-r="25">25 км</button>
+      <button class="chip" data-r="50">50 км</button><button class="chip" data-r="100">100 км</button>
+      <span class="w-px h-6 bg-[#30363d]"></span>
+    </span>
+    <button class="chip on" data-m="lib">Звільнити</button><button class="chip red" data-m="adv">Окупувати</button>
+    <button class="chip" data-m="kill">⬜ Кілл-зона</button><button class="chip" data-m="erase">Стерти зону</button>
+  </div>
+  <div id="arrowOpts" class="flex gap-2 items-center w-full" style="display:none">
+    <button class="chip on" data-s="ua">Стрілка ЗСУ</button><button class="chip red" data-s="ru">Стрілка РФ</button>
+    <span id="hint" class="text-[12px] text-gray-400">Проведіть пальцем — намалюється стрілка</span>
+  </div>
+</div>
+
+<!-- Панель інструментів -->
+<nav id="bar" class="ov">
+  <button class="tb on" data-tool="pan">✋<small>Рух</small></button>
+  <button class="tb" data-tool="lasso">➰<small>Ласо</small></button>
+  <button class="tb" data-tool="brush">🖌<small>Пензель</small></button>
+  <button class="tb" data-tool="arrow">➤<small>Стрілка</small></button>
+  <button class="tb" data-tool="del">🗑<small>Видалити</small></button>
+  <button class="tb" id="undo">↶<small>Назад</small></button>
+</nav>
+
+<!-- Пошук населеного пункту -->
+<div id="searchBox" class="ov">
+  <div class="flex gap-2">
+    <input id="q" type="search" placeholder="Пошук населеного пункту…" autocomplete="off" class="flex-1 min-w-0 rounded-lg px-3 py-2" style="font-size:16px;background:#0d1117;border:1px solid var(--line);color:#e6edf3">
+    <button class="chip" id="qClear">✕</button>
+  </div>
+  <div id="qRes" class="mt-2 overflow-y-auto" style="max-height:40vh;font-size:14px"></div>
+</div>
+
+<!-- Збереження -->
+<div id="saveSheet" class="ov">
+  <div class="flex flex-wrap gap-2">
+    <button class="chip" id="svLocal">💾 Зберегти в браузері</button>
+    <button class="chip" id="ldLocal">📂 Завантажити збережене</button>
+    <button class="chip" id="svFile">⬇ Скачати файл</button>
+    <button class="chip" id="ldFile">⬆ Відкрити файл</button>
+  </div>
+  <div id="saveMsg" class="text-[12px] text-gray-400 mt-2">Зберігається ваш фронт і стрілки</div>
+  <input type="file" id="fileIn" accept=".json,application/json" hidden>
+</div>
+
+<!-- FPV-дрон: радіус дальності -->
+<div id="fpvBox" class="ov">
+  <div class="flex gap-2 flex-wrap items-center">
+    <button class="chip on" data-u="d">🛸 БПЛА</button><button class="chip" data-u="s">🛡 ППО</button><button class="chip" data-u="r">⚙ Реалістичність</button>
+    <button class="chip ml-auto" id="fpvMin" title="Згорнути (ставити можна далі)">▾</button><button class="chip" id="fpvX" title="Закрити">✕</button>
+  </div>
+  <div id="fpvSub" class="flex gap-2 flex-wrap items-center mt-2"></div>
+  <div class="flex gap-2 items-center mt-2">
+    <button class="chip" id="fpvGo">🚀 Запуск</button><button class="chip" id="fpvUndo">↶</button><button class="chip" id="fpvClear">✕ Усі</button>
+  </div>
+  <div id="fpvHint" class="text-[12px] text-gray-400 mt-2"></div>
+</div>
+
+<div id="fpvMini" class="ov">
+  <span id="fpvMiniT" class="text-[13px] flex-1 truncate"></span>
+  <button class="chip" id="fpvMiniGo">🚀</button><button class="chip" id="fpvMiniOpen" title="Відкрити вкладку">▴</button><button class="chip" id="fpvMiniX">✕</button>
+</div>
+
+<!-- Модал: стороннє джерело -->
+<div id="srcModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:16px;padding:20px;max-width:380px;width:90%;color:#e6edf3">
+    <div style="font-weight:700;font-size:15px;margin-bottom:8px" id="srcModalTitle"></div>
+    <div style="font-size:13px;color:#8b949e;margin-bottom:12px">Це джерело не має публічного GeoJSON API.<br>Вставте прямий URL до GeoJSON-фіду (якщо маєте):</div>
+    <input id="srcModalUrl" type="url" autocomplete="off" placeholder="https://example.com/front.geojson"
+      style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#e6edf3;font-size:13px;margin-bottom:10px">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="chip" id="srcModalCancel">Скасувати</button>
+      <button class="chip on" id="srcModalOk">Підключити</button>
+    </div>
+  </div>
+</div>
+
+<!-- Новини-модал -->
+<div id="newsModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:16px;padding:16px;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;color:#e6edf3">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <b style="font-size:14px" id="newsModalTitle">📍 Подія</b>
+      <button class="chip" id="newsModalClose" style="margin-left:auto">✕ Закрити</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;font-size:13px;line-height:1.6" id="newsModalBody"></div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="chip" id="newsModalFly">🗺 Перелетіти</button>
+      <button class="chip on" id="newsModalLock">🔒 Режим спостереження</button>
+    </div>
+  </div>
+</div>
+
+<!-- Панель лінійки -->
+<div id="rulerBar" style="display:none;position:fixed;top:var(--st,0);left:0;right:0;padding:5px 12px;background:rgba(13,17,23,.95);border-bottom:1px solid #30363d;font:600 13px system-ui;color:#e6edf3;z-index:1200;display:none;align-items:center;gap:10px">
+  <span>📏 Лінійка</span><span id="rulerDist" style="color:#ffd166;min-width:80px"></span>
+  <span style="font-weight:400;font-size:12px;color:#8b949e">Тапайте на карту · двічі — завершити</span>
+  <button class="chip" id="rulerClear" style="margin-left:auto">✕ Скинути</button>
+</div>
+
+<!-- Панель блокування малювання -->
+<div id="lockBar" style="display:none;position:fixed;top:var(--st,0);left:0;right:0;padding:5px 12px;background:rgba(220,60,30,.92);font:700 13px system-ui,sans-serif;color:#fff;z-index:1200;display:none;align-items:center;gap:8px;justify-content:center">
+  <span>🔒 Режим спостереження — малювання вимкнено</span>
+  <button class="chip" id="lockOff" style="margin-left:8px">✏ Малювати</button>
+</div>
+
+<!-- Вкладка новин -->
+<div id="newsPanel" class="ov" style="display:none;top:calc(122px + var(--st,0));left:8px;right:64px;max-height:55vh;overflow-y:auto;flex-direction:column;gap:6px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <b style="font-size:13px">📡 Новини фронту</b>
+    <button class="chip" id="newsRefresh">🔄</button>
+    <button class="chip" id="newsClose" style="margin-left:auto">✕</button>
+  </div>
+  <div id="newsList" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
+</div>
+
+<!-- Бокові кнопки: лише найпотрібніше, решта — в меню ☰ -->
+<div id="side">
+  <button class="fab" id="searchBtn" title="Пошук населеного пункту">🔍</button>
+  <button class="fab" id="menuBtn" title="Меню: джерело карти, шари, інструменти">☰</button>
+  <button class="fab" id="uiToggle" title="Сховати / показати інтерфейс">👁</button>
+</div>
+
+<!-- Меню ☰ -->
+<div id="menu" class="ov">
+  <div class="msec">Джерело карти</div>
+  <div class="flex gap-2 flex-wrap">
+    <button class="chip on" data-src="deepstate">DeepState</button>
+    <button class="chip" data-src="milsum">Military Summary</button>
+    <button class="chip" data-src="perfectwar">Perfect War</button>
+    <button class="chip" data-src="uamap">UA Map</button>
+  </div>
+  <div id="srcUrlRow" class="hidden mt-2 flex gap-2">
+    <input id="srcUrl" type="url" class="flex-1 min-w-0" autocomplete="off" placeholder="URL GeoJSON-фіду">
+    <button class="chip" id="srcUrlOk">OK</button>
+  </div>
+  <div id="srcInfo" class="text-[12px] text-gray-400 mt-2"></div>
+  <div id="srcLink" class="text-[12px] text-blue-400 mt-1"></div>
+
+  <div class="msec">Карта і шари</div>
+  <div class="mgrid">
+    <button class="fab" id="layerBtn" title="Шар карти: супутник / звичайна / темна"><span class="ic">🛰</span><span class="lb">Шар карти</span></button>
+    <button class="fab" id="borderBtn" title="Кордони областей"><span class="ic">▦</span><span class="lb">Кордони</span></button>
+    <button class="fab" id="dsBtn" title="Лінії наступу"><span class="ic">⚔</span><span class="lb">Лінії наступу</span></button>
+    <button class="fab" id="killBtn" data-w="auto" title="Зона смерті: авто / 5 / 10 / 15 км / вимк"><span class="ic">💀</span><span class="lb">Зона смерті</span></button>
+  </div>
+
+  <div class="msec">Інструменти</div>
+  <div class="mgrid">
+    <button class="fab" id="rulerBtn" title="Лінійка: вимірювання відстані"><span class="ic">📏</span><span class="lb">Лінійка</span></button>
+    <button class="fab" id="lockBtn" title="Зафіксувати — спостерігати без малювання"><span class="ic">🔒</span><span class="lb">Фіксувати</span></button>
+    <button class="fab" id="newsBtn" title="Новини фронту"><span class="ic">📡</span><span class="lb">Новини</span></button>
+    <button class="fab" id="fpvBtn" title="Дрони й ППО: радіус дальності, запуск, перехоплення"><span class="ic">🛸</span><span class="lb">Дрони / ППО</span></button>
+    <button class="fab" id="jetBtn" title="Літак: показати / сховати"><span class="ic">✈</span><span class="lb">Літак</span></button>
+    <button class="fab" id="libBtn" title="Бібліотека техніки"><span class="ic">📚</span><span class="lb">Бібліотека</span></button>
+    <button class="fab" id="saveBtn" title="Зберегти / відкрити"><span class="ic">💾</span><span class="lb">Зберегти</span></button>
+    <button class="fab" id="fsBtn" title="На весь екран"><span class="ic">⛶</span><span class="lb">Весь екран</span></button>
+  </div>
+</div>
+
+<script>
+/* ============ 1. НАЛАШТУВАННЯ ============ */
+const $ = id => document.getElementById(id);
+const COLORS = { ru:'#d9534f', ua:'#0275d8', gray:'#888888', front:'#ff2a2a' };
+// Живі дані (перевірте реальний шлях у репозиторії). {DATE} = YYYYMMDD, пробуємо останні 7 днів
+const LIVE_URL = 'https://raw.githubusercontent.com/cyterat/deepstate-map-data/main/data/deepstatemap_data_{DATE}.geojson';
+
+// Схематичний резервний контур (НЕ реальна лінія фронту)
+const UA_OUTLINE = { type:'Feature', properties:{}, geometry:{ type:'MultiPolygon', coordinates:[
+  [[[22.15,48.38],[22.20,48.56],[22.14,48.73],[22.42,48.93],[22.64,49.18],[22.78,49.56],[23.00,49.72],[23.20,50.09],[23.53,50.23],[23.62,50.45],[24.09,50.61],[24.03,50.80],[23.82,51.20],[23.63,51.54],[24.00,51.63],[24.36,51.86],[24.96,51.88],[25.46,51.90],[26.03,51.82],[26.62,51.82],[27.16,51.64],[28.00,51.57],[28.69,51.58],[29.43,51.50],[30.00,51.48],[30.56,51.42],[30.94,51.45],[31.47,51.97],[31.81,52.10],[32.50,52.30],[33.49,52.37],[34.10,52.19],[34.38,51.78],[34.97,51.46],[35.40,51.22],[35.78,50.85],[36.20,50.40],[36.94,50.34],[37.39,50.45],[38.15,50.09],[38.99,49.66],[39.68,49.82],[40.14,49.57],[39.98,49.10],[40.06,48.68],[39.88,48.32],[39.67,47.90],[38.89,47.60],[38.24,47.10],[37.54,47.04],[36.80,46.70],[36.22,46.65],[35.78,46.52],[35.32,46.35],[34.97,46.20],[34.52,46.05],[33.75,46.26],[33.18,46.21],[32.90,46.12],[32.47,46.07],[32.12,46.26],[31.72,46.42],[31.56,46.57],[31.32,46.65],[31.01,46.58],[30.78,46.52],[30.63,46.28],[30.47,46.07],[30.25,45.88],[29.99,45.62],[29.80,45.30],[29.65,45.18],[29.20,45.40],[28.88,45.29],[28.52,45.42],[28.19,45.46],[28.43,45.59],[28.72,45.71],[28.81,45.89],[29.05,46.04],[29.15,46.32],[29.55,46.46],[29.95,46.38],[30.10,46.48],[29.92,46.84],[29.62,47.24],[29.32,47.55],[29.12,47.90],[28.84,48.14],[28.42,48.21],[28.00,48.41],[27.75,48.44],[27.29,48.44],[26.95,48.38],[26.58,48.24],[26.26,48.18],[25.98,47.98],[25.60,47.94],[25.17,47.88],[24.87,47.70],[24.47,47.95],[23.98,47.94],[23.46,48.00],[23.05,47.95],[22.84,47.94],[22.52,48.09],[22.28,48.22],[22.15,48.38]]],
+  [[[32.52,45.38],[33.00,45.78],[33.50,46.07],[33.72,46.17],[34.30,46.05],[34.80,45.93],[35.20,45.57],[35.80,45.45],[36.45,45.40],[36.62,45.25],[36.30,45.10],[35.40,45.00],[34.96,44.85],[34.40,44.70],[34.16,44.52],[33.75,44.38],[33.50,44.55],[33.45,44.80],[33.40,45.22],[32.52,45.38]]]
+]}}
+const FALLBACK_RU = { type:'Feature', properties:{}, geometry:{ type:'Polygon', coordinates:[[[40.5,49.8],[38.3,49.5],[37.8,48.9],[37.5,48.1],[36.9,47.7],[36.0,47.5],[35.3,47.8],[34.8,47.3],[34.0,46.9],[33.0,46.7],[32.4,46.5],[32.4,45.0],[34,43.5],[37,44],[40.5,47.0],[40.5,49.8]]] }};
+const REGIONS = [['Харківському',[49.99,36.23]],['Донецькому',[48.0,37.8]],['Запорізькому',[47.5,35.9]],
+                 ['Херсонському',[46.6,33.4]],['Луганському',[49.0,38.4]],['Куп’янському',[49.7,37.6]]];
+
+/* ============ 2. СТАН ============ */
+let ua = UA_OUTLINE, ru = null, gray = null, orig = null;
+let tool = 'pan', radius = 10, mode = 'lib', side = 'ua';
+let live = false, dataSrc = '', moveKey = '', dataKey = '', dirty = false, lastCheck = Date.now(), lastArea = 0, arrowStart = null, arrowTmp = null;
+const undoStack = [], arrows = [];
+const clone = o => o && JSON.parse(JSON.stringify(o));
+let UA_REAL = null, UA_BASE = null, UA_LIM = null;   // точний контур України (geoBoundaries) і його «запас» 3 км
+
+/* ============ 3. КАРТА ============ */
+const map = L.map('map', { center:[48.3794,31.1656], zoom:6.5, zoomSnap:0.5, zoomControl:false, attributionControl:false });
+L.control.zoom({ position:'topleft' }).addTo(map);
+L.control.attribution({ position:'bottomleft', prefix:false }).addTo(map);
+const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution:'Tiles © Esri', maxNativeZoom:17, maxZoom:18 });
+const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', { attribution:'© OSM, © CARTO', maxZoom:18 });
+const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 });   // звичайна карта (як у навігаторах)
+const BASES = { sat:satLayer, osm:osmLayer, dark:darkLayer }, BASE_ICON = { sat:'🛰', osm:'🗺', dark:'🌑' }, BASE_ORDER = ['sat', 'osm', 'dark'];
+let baseKey = 'sat'; try { const sv = localStorage.getItem('dswar.base'); if (BASES[sv]) baseKey = sv; } catch (e) {}   // останній вибір — за замовчуванням
+let baseLayer = BASES[baseKey].addTo(map);
+map.createPane('terr').style.zIndex = 390;   // територія
+map.createPane('kill').style.zIndex = 395;   // зона смерті
+map.createPane('fpv').style.zIndex = 398;    // радіус FPV
+const terr = L.layerGroup().addTo(map);
+const preview = L.circle([0,0], { radius:10000, color:'#fff', weight:1, fillOpacity:.12, interactive:false });
+
+// Статичний синій фон України — додаємо один раз, а не перебудовуємо при кожному малюванні
+const uaTint = L.geoJSON(UA_OUTLINE, { style:{ color:COLORS.ua, weight:1, fillColor:COLORS.ua, fillOpacity:.28 }, interactive:false, pane:'terr' }).addTo(map);
+// Для екрана спрощуємо геометрію (~100 м) і запам'ятовуємо за об'єктом — розрахунки йдуть по повній геометрії
+const dispCache = new WeakMap();
+function forDisplay(f) {
+  if (!f) return f;
+  let d = dispCache.get(f);
+  if (!d) { try { d = turf.simplify(f, { tolerance:.001 }); } catch (e) { d = f; } dispCache.set(f, d); }
+  return d;
+}
+function render() {
+  terr.clearLayers();
+  if (gray) L.geoJSON(forDisplay(gray), { style:{ color:COLORS.gray, weight:1, fillColor:COLORS.gray, fillOpacity:.4 }, interactive:false, pane:'terr' }).addTo(terr);
+  if (ru) L.geoJSON(forDisplay(ru), { style:{ color:COLORS.front, weight:2, dashArray:'6 4', fillColor:COLORS.ru, fillOpacity:.5 }, interactive:false, pane:'terr' }).addTo(terr);
+  updateKill();
+}
+
+/* ============ 4. ДАНІ ============ */
+const nearUkraine = ring => {   // центр полігона має лежати в межах України (відсікає Калінінград, РФ, Білорусь)
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  ring.forEach(p => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; return cx > 21.5 && cx < 42 && cy > 43.5 && cy < 52.6;
+};
+const mergePolys = a => { // власне злиття (turf.combine не завжди приймає MultiPolygon)
+  const c = []; a.forEach(f => { const g = f.geometry; (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).forEach(q => { if (nearUkraine(q[0])) c.push(q); }); });
+  return c.length ? turf.multiPolygon(c) : null;
+};
+function classifyApi(fc) { // офіційний API DeepState: зони за назвою (укр./англ.)
+  const rus = [], grays = [];
+  (fc.features || []).forEach(f => {
+    if (!f.geometry || !/Polygon/.test(f.geometry.type)) return;
+    const n = String((f.properties && f.properties.name) || '').toLowerCase();
+    if (/liber|звільн|освобож|придн/.test(n)) return;
+    f = turf.truncate(f, { precision:4, coordinates:2 });
+    if (/gr[ae]y|сір|сер|уточ|unspec|clarif/.test(n)) grays.push(f);
+    else if (/occup|окуп|оккуп|ordlo|ордло|cadr|calr|crim|крим/.test(n)) rus.push(f);
+  });
+  return { ru: mergePolys(rus), gray: mergePolys(grays) };
+}
+function classify(fc) { // розбір полігонів DeepState за назвою (за потреби підправте регулярки)
+  const rus = [], grays = [];
+  (fc.features || []).forEach(f => {
+    if (!f.geometry || !/Polygon/.test(f.geometry.type)) return;
+    const n = String((f.properties && (f.properties.name || f.properties.description)) || '').toLowerCase();
+    if (/liber|звільн|освобож/.test(n)) return;
+    f = turf.truncate(f, { precision:4, coordinates:2 });
+    if (/gr[ae]y|сір|сер/.test(n)) grays.push(f);
+    else rus.push(f); // у файлах cyterat весь мультиполігон = окупована територія
+  });
+  const merge = mergePolys;
+  return { ru: merge(rus), gray: merge(grays) };
+}
+const RAW = 'https://raw.githubusercontent.com/cyterat/deepstate-map-data/main/data/';
+const CDN = 'https://cdn.jsdelivr.net/gh/cyterat/deepstate-map-data@main/data/';
+async function fetchFile(name) {
+  for (const base of [RAW, CDN]) {
+    try { const r = await fetch(base + name); if (r.ok) return await r.json(); } catch (e) { /* наступне джерело */ }
+  }
+  return null;
+}
+// Офіційний API DeepState (може не віддаватися браузеру через CORS — тоді піде резервний шлях)
+async function loadDeepStateApi() {
+  try {
+    const r = await fetch('https://deepstatemap.live/api/history/last'); if (!r.ok) return null;
+    const j = await r.json(), fc = j.map || j;
+    if (fc && fc.features) { fc._dt = String(j.datetime || ''); return fc; }
+    return null;
+  } catch (e) { return null; }
+}
+function applyFront(res, text, ok, key) {
+  ru = res.ru; gray = res.gray; live = true; dataKey = key; dataSrc = /Live/.test(text) ? 'api' : 'file';
+  if (UA_REAL) { ua = UA_REAL; clipToUA(); }                          // точний контур: червоне не заходить на територію РФ
+  else { try { ua = turf.union(turf.buffer(UA_OUTLINE, 40, { units:'kilometers' }), ru); } catch (e) { /* лишаємо грубий контур */ } }
+  setStatus(text, ok ? '#3fb950' : '#f0ad4e');
+}
+let namesCache = null;
+async function listNames() {   // файли cyterat/deepstate-map-data, найновіші першими (кеш 10 хв)
+  if (namesCache && Date.now() - namesCache.t < 6e5) return namesCache.list;
+  let list = [];
+  try {
+    const r = await fetch('https://data.jsdelivr.com/v1/packages/gh/cyterat/deepstate-map-data@main?structure=flat');
+    list = (await r.json()).files.map(f => f.name).filter(x => /\/data\/deepstatemap_data_\d{8}\.geojson$/.test(x)).map(x => x.split('/').pop()).sort().reverse();
+  } catch (e) { /* перебір дат */ }
+  if (!list.length) list = Array.from({ length:12 }, (_, i) => `deepstatemap_data_${new Date(Date.now() - i * 864e5).toISOString().slice(0,10).replace(/-/g,'')}.geojson`);
+  namesCache = { t:Date.now(), list };
+  return list;
+}
+async function loadLive(keep) {   // keep=true: при невдачі не чіпати поточну карту
+  // 1) DeepState API: свіжий фронт + лінії наступу
+  const api = await loadDeepStateApi();
+  if (api) {
+    addDeepStateLines(api.features);
+    const res = classifyApi(api);
+    if (res.ru) {
+      const key = /^\d{4}-\d\d-\d\d/.test(api._dt) ? api._dt.slice(0,10) : new Date().toISOString().slice(0,10);
+      applyFront(res, `DeepState Live · ${key} · ⚔ ${dsCount}`, true, key); return true;
+    }
+  }
+  // 2) Щоденні файли cyterat/deepstate-map-data (лише окупована територія)
+  const names = await listNames();
+  for (const name of names.slice(0, 5)) {
+    const fc = await fetchFile(name); if (!fc) continue;
+    const res = classify(fc.type === 'FeatureCollection' ? fc : { features:[fc] });
+    if (!res.ru) continue;
+    const d = name.match(/(\d{4})(\d{2})(\d{2})/), age = (Date.now() - Date.UTC(+d[1], +d[2]-1, +d[3])) / 864e5;
+    applyFront(res, `DeepState · дані за ${d[3]}.${d[2]}.${d[1]}`, age <= 3, `${d[1]}-${d[2]}-${d[3]}`);
+    log('Лінії наступу DeepState недоступні (API не відповів)');
+    return true;
+  }
+  if (keep) { setStatus('Не вдалося оновити — лишилися попередні дані', '#f0ad4e'); return false; }
+  ru = turf.intersect(FALLBACK_RU, UA_OUTLINE) || FALLBACK_RU; gray = null;
+  setStatus('Не вдалося завантажити DeepState — схематичні дані', '#f0ad4e');
+  return false;
+}
+let statusNow = ['', ''];
+const setStatus = (t, c) => { statusNow = [t, c]; $('status').textContent = t; $('status').style.color = c; };
+const restoreStatus = () => { $('status').textContent = statusNow[0]; $('status').style.color = statusNow[1]; };
+
+/* ============ 5. СТАТИСТИКА І ЖУРНАЛ ============ */
+const areaRu = () => { if (live) return turf.area(ru); try { const c = turf.intersect(ru, ua); return c ? turf.area(c) : 0; } catch (e) { return turf.area(ru); } };
+let totKm2 = 0, killKm2 = 0;
+function updateStats() {
+  lastArea = areaRu();
+  totKm2 = live ? 603550 : turf.area(ua) / 1e6;
+  showStats();
+}
+function showStats() {   // зона смерті — окрема третя частина: забирає порівну з обох сторін фронту
+  if (!totKm2) return;
+  const ruKm = lastArea / 1e6, k = Math.min(killKm2, totKm2 * .25);
+  const pRu = Math.max(0, Math.min(100, (ruKm - k / 2) / totKm2 * 100)), pK = k / totKm2 * 100, pUa = Math.max(0, 100 - pRu - pK);
+  $('pRu').textContent = pRu.toFixed(1) + '%'; $('pUa').textContent = pUa.toFixed(1) + '%'; $('pKill').textContent = pK.toFixed(1) + '%';
+  $('barRu').style.width = pRu + '%'; $('barUa').style.width = pUa + '%'; $('barKill').style.width = pK + '%';
+}
+const regionAt = ll => REGIONS.map(r => [r[0], Math.hypot(r[1][0]-ll.lat, r[1][1]-ll.lng)]).sort((a,b)=>a[1]-b[1])[0][0];
+function log(t) {
+  const d = document.createElement('div'); d.className = 'py-0.5'; d.textContent = t; $('log').prepend(d);
+  while ($('log').childElementCount > 60) $('log').lastChild.remove();   // журнал не росте безкінечно
+}
+$('strip').onclick = () => $('log').classList.toggle('open');
+
+/* ============ 6. ПЕНЗЕЛЬ ============ */
+// Звільнення: ru \ коло. Окупація: ru ∪ (коло ∩ територія України)
+function stamp(ll) {
+  const c = turf.circle([ll.lng, ll.lat], radius, { units:'kilometers', steps:40 });
+  try {
+    if (mode === 'lib') ru = turf.difference(ru, c) || turf.polygon([[[0,0],[0,.0001],[.0001,.0001],[0,0]]]);
+    else if (mode === 'adv') { const add = turf.intersect(c, ua); if (add) ru = turf.union(ru, add); }
+    else applyKill(c);
+  } catch (e) { console.warn(e); }
+}
+let painting = false, last = null, firstLL = null, raf = 0;
+const cont = map.getContainer();
+const toLL = e => map.mouseEventToLatLng(e);
+
+cont.addEventListener('pointerdown', e => {
+  if (!e.isPrimary && painting) { painting = false; if (lassoLine) map.removeLayer(lassoLine); restoreStatus(); return; } // другий палець = масштабування
+  if (!['brush','lasso','arrow'].includes(tool) || !e.isPrimary || animating || e.target.closest('.leaflet-control') || e.target.closest('.jet')) return;
+  painting = true; last = null; firstLL = toLL(e);
+  cont.setPointerCapture && cont.setPointerCapture(e.pointerId);
+  if (tool === 'lasso' || tool === 'arrow') return startLasso(firstLL);
+  pushUndo(); step(firstLL);
+});
+cont.addEventListener('pointermove', e => {
+  if (!['brush','lasso','arrow'].includes(tool)) return;
+  if (tool === 'brush' && e.pointerType === 'mouse' && !painting) { preview.setRadius(radius * 1000).setLatLng(toLL(e)); if (!map.hasLayer(preview)) preview.addTo(map); }
+  if (painting && e.isPrimary) tool === 'brush' ? step(toLL(e)) : moveLasso(toLL(e));
+});
+cont.addEventListener('pointerup', endStroke);
+cont.addEventListener('pointercancel', endStroke);
+cont.addEventListener('pointerleave', () => map.removeLayer(preview));
+
+function step(ll) { // штамп лише коли пройшли достатньо далеко (економимо обчислення)
+  if (last && map.distance(last, ll) / 1000 < radius * 0.4) return;
+  last = ll; stamp(ll);
+  if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); });
+}
+function endStroke() {
+  if (!painting) return;
+  painting = false;
+  if (tool === 'lasso') return endLasso();
+  if (tool === 'arrow') return endArrow();
+  dirty = true;
+  render();
+  const before = lastArea; updateStats();
+  const d = (lastArea - before) / 1e6;
+  if (Math.abs(d) >= 1) log(`${d < 0 ? 'ЗСУ звільнили +' : 'РФ просунулась на +'}${Math.abs(d).toFixed(0)} км² на ${regionAt(firstLL)} напрямку`);
+}
+
+/* ============ 6b. ЛАСО: обводите ділянку — вона «захоплюється» з анімацією ============ */
+let lassoPts = [], lassoLine = null, animating = false;
+const EMPTY = () => turf.polygon([[[0,0],[0,.0001],[.0001,.0001],[0,0]]]);
+function pushUndo() { undoStack.push({ ru, km: killManual }); if (undoStack.length > 12) undoStack.shift(); }
+const lassoColor = () => mode === 'lib' ? COLORS.ua : mode === 'adv' ? COLORS.ru : '#f2f2f2';
+function startLasso(ll) {
+  lassoPts = [ll];
+  lassoLine = (tool === 'lasso'
+    ? L.polygon([ll], { color:'#fff', weight:3, dashArray:'6 6', fillColor:'#fff', fillOpacity:.25, interactive:false })   // біла зона виділення
+    : L.polyline([ll], { color:sideCol(), weight:3, dashArray:'2 6', interactive:false })).addTo(map);
+}
+function moveLasso(ll) {
+  const a = map.latLngToContainerPoint(lassoPts[lassoPts.length - 1]), b = map.latLngToContainerPoint(ll);
+  if (a.distanceTo(b) < 4) return;           // фільтр дрібних рухів
+  lassoPts.push(ll); lassoLine.setLatLngs(lassoPts);
+  if (tool === 'lasso' && lassoPts.length >= 3) {   // живий підрахунок площі під пальцем
+    try {
+      const r = lassoPts.map(p => [p.lng, p.lat]); r.push(r[0]);
+      $('status').style.color = '#fff'; $('status').textContent = `Ласо ≈ ${Math.round(turf.area(turf.polygon([r])) / 1e6).toLocaleString('uk-UA')} км²`;
+    } catch (e) { /* самоперетин — пропускаємо */ }
+  }
+}
+function chaikinClosed(pts, n) {   // згладжування замкненого контуру
+  for (let k = 0; k < n; k++) {
+    const o = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      o.push([a[0]*.75 + b[0]*.25, a[1]*.75 + b[1]*.25], [a[0]*.25 + b[0]*.75, a[1]*.25 + b[1]*.75]);
+    }
+    pts = o;
+  }
+  return pts;
+}
+function endLasso() {
+  map.removeLayer(lassoLine); restoreStatus();
+  if (lassoPts.length < 4) return;
+  const pts = chaikinClosed(lassoPts.map(p => [p.lng, p.lat]), 2);   // м'які лінії замість різких кутів руки
+  pts.push(pts[0]);
+  let poly; try { poly = turf.simplify(turf.polygon([pts]), { tolerance:0.004 }); } catch (e) { return; }
+  if (turf.area(poly) / 1e6 < 15) return;                            // випадкове крихітне коло ігноруємо
+  (mode === 'lib' || mode === 'adv') ? frontSweep(poly) : captureAnimate(poly);   // територія — рух фронту, зона смерті — вибух
+}
+// Рух фронту: нова територія розростається від СТАРОЇ лінії фронту рівномірно (однаково в усі боки)
+// аж до межі ласо — як реальне просування, а не коло. Кадри рахуємо наперед, потім відтворюємо.
+async function frontSweep(poly) {
+  animating = true;
+  const col = lassoColor();
+  let pre = null;
+  try {
+    // 1) що саме змінюється: звільнена ділянка або нова окупована
+    let delta;
+    if (mode === 'lib') delta = turf.intersect(ru, poly);
+    else { const add = turf.intersect(poly, ua); delta = add ? turf.difference(add, ru) : null; }
+    if (!delta) throw new Error('nothing changes');
+    // 2) ділянка старого фронту поблизу ласо
+    const bb = turf.bbox(poly), pad = .6, box = [bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad], lc = [];
+    const pl = turf.polygonToLine(ru);
+    (pl.type === 'FeatureCollection' ? pl.features : [pl]).forEach(f => {
+      const c = turf.bboxClip(f, box).geometry;
+      (c.type === 'LineString' ? [c.coordinates] : c.coordinates).forEach(x => { if (x.length > 1) lc.push(x); });
+    });
+    if (!lc.length) throw new Error('no front nearby');
+    const lines = lc.map(x => turf.lineString(x)), front = turf.multiLineString(lc);
+    // 3) наскільки далеко від лінії фронту сягає змінена ділянка
+    const dg = turf.simplify(delta, { tolerance:.01 }).geometry, vs = [];
+    (dg.type === 'Polygon' ? [dg.coordinates] : dg.coordinates).forEach(r => r[0].forEach(v => vs.push(v)));
+    const stepV = Math.max(1, Math.ceil(vs.length / 200)); let D = 5;
+    for (let i = 0; i < vs.length; i += stepV) {
+      const pt = turf.point(vs[i]); let m = 1e9;
+      lines.forEach(l => { m = Math.min(m, turf.pointToLineDistance(pt, l, { units:'kilometers' })); });
+      D = Math.max(D, m);
+    }
+    // 4) кадри: частина зміненої ділянки, яку фронт «пройшов» на відстань d
+    pre = L.geoJSON(poly, { style:{ color:'#fff', weight:3, fillColor:'#fff', fillOpacity:.3 }, interactive:false }).addTo(map);
+    const K = 24, frames = [];
+    for (let k = 1; k <= K; k++) {
+      let f = null;
+      try { f = turf.intersect(delta, turf.buffer(front, D * 1.05 * k / K, { units:'kilometers', steps:6 })); } catch (e) {}
+      frames.push(f);
+      await new Promise(r => setTimeout(r, 0));          // не блокуємо інтерфейс
+    }
+    if (!frames.some(Boolean)) throw new Error('no frames');
+    map.removeLayer(pre); pre = null;
+    // 5) відтворення з постійною швидкістю
+    await new Promise(res => {
+      const sweep = L.geoJSON(null, { interactive:false }).addTo(map), edge = L.geoJSON(null, { interactive:false }).addTo(map);
+      const t0 = performance.now(), DUR = 1800; let last = -1;
+      const frame = now => {
+        const k = Math.min(1, (now - t0) / DUR), i = Math.min(K - 1, Math.floor(k * K));
+        if (i !== last) {
+          last = i; sweep.clearLayers(); edge.clearLayers();
+          const f = frames[i];
+          if (f) {
+            sweep.addData(f); sweep.setStyle({ color:'#fff', weight:2, fillColor:col, fillOpacity:.6 });
+            edge.addData(f);  edge.setStyle({ color:col, weight:9, opacity:.3, fill:false });     // світіння краю
+          }
+        }
+        if (k < 1) return requestAnimationFrame(frame);
+        map.removeLayer(sweep); map.removeLayer(edge); res();
+      };
+      requestAnimationFrame(frame);
+    });
+    commitPoly(poly); animating = false;
+  } catch (e) {                                           // щось пішло не так — стара анімація
+    if (pre) map.removeLayer(pre);
+    animating = false; captureAnimate(poly);
+  }
+}
+// Анімація захоплення (≈1.7 с): 1) біла «кілл-зона» пульсує, 2) колір заливає її від країв до центру, 3) спалах і хвиля
+function captureAnimate(poly) {
+  animating = true;
+  const col = lassoColor(), wcol = (mode === 'kill' || mode === 'erase') ? '#ff9f1a' : '#fff', t0 = performance.now(), T1 = 550, T2 = 1250, T3 = 1750;
+  const cen = turf.centroid(poly).geometry.coordinates, cll = [cen[1], cen[0]];
+  let R = 20000; try { R = Math.max(20000, turf.length(turf.polygonToLine(poly), { units:'kilometers' }) / (2 * Math.PI) * 1300); } catch (e) {}
+  const glow  = L.geoJSON(poly, { style:{ color:wcol, weight:14, opacity:.25, fill:false }, interactive:false }).addTo(map);
+  const base  = L.geoJSON(poly, { style:{ color:col, weight:3, fillColor:col, fillOpacity:0 }, interactive:false }).addTo(map);
+  const white = L.geoJSON(null, { interactive:false }).addTo(map);
+  const ring  = L.circle(cll, { radius:1, color:wcol, weight:3, fill:false, opacity:0, interactive:false }).addTo(map);
+  const scaled = f => { try { return turf.transformScale(poly, Math.max(.04, f), { origin:'centroid' }); } catch (e) { return poly; } };
+  const showWhite = (f, op) => { white.clearLayers(); white.addData(scaled(f)); white.setStyle({ color:wcol, weight:3, fillColor:wcol, fillOpacity:op }); };
+  const frame = now => {
+    const t = now - t0;
+    glow.setStyle({ opacity: .2 + .15 * Math.sin(t / 70) });
+    if (t < T1) {                                   // фаза 1: біла зона з'являється й пульсує
+      const e = 1 - Math.pow(1 - t / T1, 3);
+      showWhite(.88 + .12 * e, .5 + .15 * Math.sin(t / 55));
+    } else if (t < T2) {                            // фаза 2: колір заливає зону, біле стискається до центру
+      const k = (t - T1) / (T2 - T1), e = k * k * (3 - 2 * k);
+      base.setStyle({ fillOpacity: .65 * Math.min(1, k * 2.2) });
+      showWhite(1 - .96 * e, .6);
+    } else {                                        // фаза 3: спалах і біла хвиля від центру
+      const k = (t - T2) / (T3 - T2);
+      white.clearLayers();
+      base.setStyle({ fillOpacity: .65 + .25 * (1 - k), weight: 3 + 3 * (1 - k) });
+      ring.setRadius(Math.max(1, R * k)); ring.setStyle({ opacity: 1 - k });
+    }
+    if (t < T3) return requestAnimationFrame(frame);
+    [glow, base, white, ring].forEach(l => map.removeLayer(l));
+    commitPoly(poly); animating = false;
+  };
+  requestAnimationFrame(frame);
+}
+function commitPoly(poly) {
+  pushUndo(); dirty = true; if (navigator.vibrate) navigator.vibrate(30);
+  const before = lastArea;
+  let parts; try { parts = turf.unkinkPolygon(poly).features; } catch (e) { parts = [poly]; } // самоперетини ласо
+  parts.forEach(p => {
+    try {
+      if (mode === 'lib') ru = turf.difference(ru, p) || EMPTY();
+      else if (mode === 'adv') { const add = turf.intersect(p, ua); if (add) ru = turf.union(ru, add); }
+      else applyKill(p);
+    } catch (e) { console.warn(e); }
+  });
+  render(); updateStats();
+  if (mode === 'kill') log('Додано зону смерті'); else if (mode === 'erase') log('Зону смерті стерто');
+  const d = (lastArea - before) / 1e6;
+  if (Math.abs(d) >= 1) log(`${d < 0 ? 'ЗСУ звільнили +' : 'РФ просунулась на +'}${Math.abs(d).toFixed(0)} км² на ${regionAt(firstLL)} напрямку`);
+}
+
+/* ============ 6c. НАЗВИ МІСТ (укр.), кількість залежить від масштабу ============ */
+// назва|широта|довгота|пріоритет (1 — завжди, 2 — від zoom 7, 3 — від zoom 8)
+const CITY_DATA = `Київ|50.45|30.52|1;Харків|49.99|36.23|1;Одеса|46.48|30.73|1;Дніпро|48.46|35.05|1;Донецьк|48.00|37.80|1;Запоріжжя|47.84|35.14|1;Львів|49.84|24.03|1;Маріуполь|47.10|37.54|1;Луганськ|48.57|39.31|1;Сімферополь|44.95|34.10|1;Севастополь|44.62|33.52|1;Херсон|46.64|32.62|1;Миколаїв|46.97|31.99|1;Полтава|49.59|34.55|1;Чернігів|51.50|31.29|1;Суми|50.91|34.80|2;Вінниця|49.23|28.47|2;Житомир|50.25|28.66|2;Черкаси|49.44|32.06|2;Кропивницький|48.51|32.26|2;Рівне|50.62|26.25|2;Луцьк|50.75|25.33|2;Ужгород|48.62|22.30|2;Чернівці|48.29|25.94|2;Івано-Франківськ|48.92|24.71|2;Тернопіль|49.55|25.59|2;Хмельницький|49.42|26.99|2;Мелітополь|46.85|35.37|2;Бердянськ|46.76|36.80|2;Бахмут|48.59|38.00|2;Краматорськ|48.72|37.56|2;Слов’янськ|48.87|37.61|2;Кременчук|49.07|33.42|2;Кривий Ріг|47.91|33.39|2;Нікополь|47.57|34.40|2;Сєвєродонецьк|48.95|38.49|2;Покровськ|48.28|37.18|3;Авдіївка|48.14|37.75|3;Куп’янськ|49.71|37.62|3;Ізюм|49.21|37.26|3;Лиман|48.99|37.81|3;Вовчанськ|50.29|36.95|3;Волноваха|47.60|37.50|3;Токмак|47.25|35.71|3;Енергодар|47.50|34.65|3;Нова Каховка|46.75|33.37|3;Генічеськ|46.17|34.81|3;Скадовськ|46.12|32.91|3;Вугледар|47.78|37.25|3;Часів Яр|48.59|37.84|3;Гуляйполе|47.66|36.26|3;Оріхів|47.57|35.78|3;Охтирка|50.31|34.90|3;Шостка|51.87|33.48|3;Конотоп|51.24|33.20|3;Бердичів|49.89|28.60|3;Умань|48.75|30.22|3;Кам’янське|48.51|34.62|3;Бровари|50.51|30.79|3;Мукачево|48.44|22.72|3;Дрогобич|49.35|23.51|3;Кам’янець-Подільський|48.68|26.58|3;Біла Церква|49.80|30.12|3;Павлоград|48.53|35.87|3;Первомайськ|48.04|30.85|3;Ялта|44.50|34.17|3;Керч|45.36|36.47|3;Мар’їнка|47.94|37.50|3`;
+const cityLayer = L.layerGroup().addTo(map);
+const cityNames = new Set(CITY_DATA.split(';').map(x => x.split('|')[0]));
+let villages = [], oblastMarks = [], bordersOn = true;
+const vilLayer = L.layerGroup().addTo(map), obLayer = L.layerGroup().addTo(map);
+const cities = CITY_DATA.split(';').map(s => {
+  const a = s.split('|');
+  return { p:+a[3], m:L.marker([+a[1], +a[2]], { interactive:false, keyboard:false,
+    icon:L.divIcon({ className:'city p' + a[3], html:`<span>${a[0]}</span>`, iconSize:[0,0] }) }) };
+});
+function updateCities() {   // скільки підписів показувати — залежить від масштабу й видимої області
+  const z = map.getZoom(), max = z < 7 ? 1 : z < 8 ? 2 : 3;
+  const own = baseKey !== 'osm';   // на звичайній карті підписи вже є в самих плитках
+  cities.forEach(c => (own && c.p <= max) ? cityLayer.addLayer(c.m) : cityLayer.removeLayer(c.m));
+  const vmax = z < 8 ? 0 : z < 9 ? 3 : z < 10 ? 4 : 5, b = map.getBounds().pad(.25);   // містечка з zoom 8, села з 9, хутори з 10
+  villages.forEach(v => (own && v.p <= vmax && b.contains(v.ll)) ? vilLayer.addLayer(v.m) : vilLayer.removeLayer(v.m));
+  oblastMarks.forEach(m => (bordersOn && z < 8) ? obLayer.addLayer(m) : obLayer.removeLayer(m));
+}
+map.on('zoomend moveend', updateCities); updateCities();
+
+/* ============ 6d. ЗОНА СМЕРТІ: біла смуга 5–15 км уздовж лінії фронту (між червоним і синім) ============ */
+const killLayer = L.layerGroup().addTo(map);
+let killMode = 'auto', killTimer = 0, killManual = null, uaMask = null;   // 'auto' | 5 | 10 | 15 | 0
+let moveZone = null, attackLines = [], hotCache = null;      // «гарячі» ділянки: рух фронту за тиждень + лінії наступу
+const KILL_SCALE = .65;                                        // загальний множник ширини (менше = вужча зона)
+const KILL_W = [16, 12, 8, 5];                                 // км: біля змін фронту → далеко від них
+// Окрема зона між 🟦 і 🟥: діагональне штрихування (із запасним суцільним кольором)
+const killRenderer = L.svg({ pane:'kill' }).addTo(map);
+killRenderer._container.insertAdjacentHTML('afterbegin', '<defs><pattern id="killHatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#a9b0b8"/><rect width="2" height="10" fill="#8d96a1"/></pattern></defs>');
+const KILL_STYLE = { color:'#aab2bb', weight:1.2, opacity:.45, fillColor:'url(#killHatch) #a9b0b8', fillOpacity:.32 };
+function applyKill(p) {   // ласо/пензель у режимі «Кілл-зона» додає, у режимі «Стерти зону» — прибирає
+  try {
+    if (mode === 'kill') killManual = killManual ? turf.union(killManual, p) : p;
+    else if (killManual) killManual = turf.difference(killManual, p);
+  } catch (e) { console.warn(e); }
+}
+// Береги й кордон РФ: там межа окупованої території — не фронт, зону смерті там не малюємо
+const NONFRONT_COORDS = [
+  [[40.1,49.6],[40.0,48.4],[39.7,47.8],[38.2,47.1],[37.3,46.9],[35.0,46.3],[33.5,46.0]],
+  [[32.5,45.4],[33.6,46.2],[35.0,45.9],[36.5,45.4],[36.6,45.0],[35.4,44.6],[34.0,44.4],[33.5,44.6],[32.5,45.4]]
+];
+const NONFRONT_LINES = NONFRONT_COORDS.map(c => turf.lineString(c));
+function updateKill() { clearTimeout(killTimer); killTimer = setTimeout(drawKill, 350); }   // з паузою, щоб не гальмувати малювання
+// Рух фронту: порівнюємо два файли DeepState (найновіший і ~тижневої давності); ділянки змін = «гарячі»
+async function loadMovement() {
+  if (srcKey !== 'deepstate') { if (moveZone) { moveZone = null; hotCache = null; moveKey = ''; updateKill(); } return; }   // порівняння архівів — лише для DeepState
+  try {
+    const names = await listNames(); if (names.length < 2) return;
+    const dt = n => { const m = n.match(/(\d{4})(\d{2})(\d{2})/); return Date.UTC(+m[1], +m[2] - 1, +m[3]); };
+    const t1 = dt(names[0]);
+    if (Date.now() - t1 > 14 * 864e5) { moveZone = null; hotCache = null; moveKey = ''; updateKill(); return; }   // архів застарів — рух не рахуємо
+    const older = names.find(n => t1 - dt(n) >= 7 * 864e5) || names[Math.min(7, names.length - 1)];
+    const mkey = names[0] + '|' + older; if (mkey === moveKey) return;   // ці дані вже враховані
+    const [f1, f0] = await Promise.all([fetchFile(names[0]), fetchFile(older)]);
+    if (!f1 || !f0) return;
+    const wrap = f => f.type === 'FeatureCollection' ? f : { features:[f] };
+    const r1 = classify(wrap(f1)).ru, r0 = classify(wrap(f0)).ru; if (!r1 || !r0) return;
+    const parts = [];
+    const gain = [];
+    [turf.difference(r1, r0), turf.difference(r0, r1)].forEach((f, k) => {   // що змінилось: окуповано або звільнено
+      if (!f) return;
+      const g = f.geometry; (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).forEach(c => {
+        if (turf.area(turf.polygon(c)) / 1e6 >= 2) { parts.push(c); if (k === 0) gain.push(c); }       // відсікаємо дрібні похибки
+      });
+    });
+    moveZone = parts.length ? turf.multiPolygon(parts) : null; moveKey = mkey;
+    if (!dsCount && gain.length) moveArrows(gain, r0);
+    log(moveZone ? `Зона смерті: враховано рух фронту за тиждень (${parts.length} ділянок)` : 'Фронт за тиждень майже не рухався');
+  } catch (e) { console.warn(e); }
+  hotCache = null; updateKill();
+}
+function buildHot() {   // три «кільця» активності навколо змін фронту й ліній наступу: 15, 35, 70 км
+  const lv = [[], [], []];
+  const add = g => [15, 35, 70].forEach((r, i) => { try { lv[i].push(turf.buffer(g, r, { units:'kilometers', steps:4 })); } catch (e) {} });
+  if (moveZone) add(moveZone);
+  attackLines.forEach(add);
+  return lv;
+}
+const idle = fn => window.requestIdleCallback ? requestIdleCallback(fn, { timeout:4000 }) : setTimeout(fn, 800);   // важкі речі — у вільний час
+const inAny = (pt, arr) => arr.some(b => b && turf.booleanPointInPolygon(pt, b));
+// гладкий «шум» уздовж лінії: ширина зони пульсує, а не рівна смуга
+const kNoise = s => Math.sin(s / 37) * .5 + Math.sin(s / 13 + 1.7) * .3 + Math.sin(s / 5.3 + 4) * .2;
+
+let killRun = 0, killCache = null, simpCache = null, vilKey = '';
+const tick = () => new Promise(r => setTimeout(r, 0));
+// Розрахунок смуги вздовж фронту: порціями по ~12 мс (інтерфейс не підвисає), з можливістю скасування.
+// Заодно збираємо точки справжнього фронту (runs) — за ними шукаємо села.
+async function computeKill(run) {
+  const lv = hotCache, haveSeeds = lv[0].length > 0, amp = killMode === 'auto' ? .35 : .15;
+  if (!simpCache || simpCache.ru !== ru) { const ruS = turf.simplify(ru, { tolerance:.02 }); simpCache = { ru, ruS, lines:turf.polygonToLine(ruS) }; }
+  uaMask = uaMask || turf.buffer(UA_OUTLINE, 20, { units:'kilometers' });
+  const { ruS, lines } = simpCache;
+  const fc = lines.type === 'FeatureCollection' ? lines : turf.featureCollection([lines]);
+  const polys = [], runs = []; let area = 0, t0 = performance.now();
+  for (const f of fc.features) {
+    const g = f.geometry;
+    for (const c of (g.type === 'LineString' ? [g.coordinates] : g.coordinates)) {
+      let s = 0, cur = null;                                            // s — пройдена відстань, км; cur — поточний безперервний відрізок фронту
+      for (let i = 0; i < c.length - 1; i++) {
+        const a = c[i], b = c[i + 1], len = turf.distance(a, b, { units:'kilometers' });
+        const n = Math.max(1, Math.ceil(len / 8)), pl = len / n;
+        const at = t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        for (let j = 0; j < n; j++) {
+          s += pl;
+          if (performance.now() - t0 > 12) { await tick(); if (run !== killRun) return null; t0 = performance.now(); }
+          const mid = turf.point(at((j + .5) / n));
+          let ok = !NONFRONT_LINES.some(l => turf.pointToLineDistance(mid, l, { units:'kilometers' }) < 35);   // берег/кордон — не фронт
+          if (ok) {                                                     // справжній фронт: по один бік окупація, по інший — наша земля
+            const br = turf.bearing(a, b);
+            const p1 = turf.destination(mid, 10, br + 90, { units:'kilometers' }), p2 = turf.destination(mid, 10, br - 90, { units:'kilometers' });
+            const in1 = turf.booleanPointInPolygon(p1, ruS);
+            ok = in1 !== turf.booleanPointInPolygon(p2, ruS) && turf.booleanPointInPolygon(in1 ? p2 : p1, uaMask);
+          }
+          if (!ok) { cur = null; continue; }
+          if (!cur) { cur = []; runs.push(cur); }
+          cur.push([mid.geometry.coordinates[1], mid.geometry.coordinates[0]]);
+          if (!killMode) continue;                                      // зона смерті вимкнена — потрібні лише точки фронту
+          let w = killMode === 'auto'
+            ? (haveSeeds ? KILL_W[inAny(mid, lv[0]) ? 0 : inAny(mid, lv[1]) ? 1 : inAny(mid, lv[2]) ? 2 : 3] : 10)
+            : killMode;
+          w *= KILL_SCALE * (1 + amp * kNoise(s));
+          const seg = turf.buffer(turf.lineString([at(j / n), at((j + 1) / n)]), w / 2, { units:'kilometers', steps:2 });
+          if (!seg) continue;
+          area += pl * w;
+          for (const q of (seg.geometry.type === 'Polygon' ? [seg.geometry.coordinates] : seg.geometry.coordinates)) polys.push(q);
+        }
+      }
+    }
+  }
+  return { polys, area, runs };
+}
+async function drawKill() {
+  const run = ++killRun, out = []; let km2 = 0;
+  if (killManual) {
+    out.push(L.geoJSON(killManual, { pane:'kill', renderer:killRenderer, interactive:false, style:KILL_STYLE }));
+    try { km2 += turf.area(killManual) / 1e6; } catch (e) {}
+  }
+  const needVil = live && !dirty && vilKey !== dataKey;                 // села шукаємо один раз на добу даних
+  if (ru && (killMode || needVil)) {
+    try {
+      hotCache = hotCache || buildHot();
+      let res;
+      if (killCache && killCache.ru === ru && killCache.mode === killMode && killCache.hot === hotCache) res = killCache;   // нічого не змінилось — беремо готове
+      else { res = await computeKill(run); if (!res) return; killCache = { ru, mode:killMode, hot:hotCache, polys:res.polys, area:res.area, runs:res.runs }; }
+      if (killMode) {
+        km2 += res.area;
+        if (res.polys.length) out.push(L.geoJSON(turf.multiPolygon(res.polys), { pane:'kill', renderer:killRenderer, interactive:false,
+          style:Object.assign({}, KILL_STYLE, { fillRule:'nonzero' }) }));    // nonzero: суцільна заливка без «дір» на перетинах
+      }
+      if (needVil && res.runs.length) idle(() => loadVillages(res.runs));
+    } catch (e) { console.warn(e); }
+  }
+  if (run !== killRun) return;                       // з'явився новіший запуск
+  killLayer.clearLayers(); out.forEach(l => l.addTo(killLayer));        // міняємо зону одразу, без мерехтіння
+  killKm2 = km2; showStats();
+}
+
+/* ============ 6e. КОРДОНИ ОБЛАСТЕЙ та СЕЛА НА ФРОНТІ ============ */
+// Кордони: geoBoundaries (ADM1, спрощені). Два дзеркала на випадок збою.
+const simp = (g, t) => { try { return turf.simplify(g, { tolerance:t, highQuality:false }); } catch (e) { return g; } };   // ≈50 м — лінія точна, але легка
+const BORDER_URLS = [
+  'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/UKR/ADM1/geoBoundaries-UKR-ADM1.geojson',
+  'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/UKR/ADM1/geoBoundaries-UKR-ADM1_simplified.geojson',
+  'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/releaseData/gbOpen/UKR/ADM1/geoBoundaries-UKR-ADM1_simplified.geojson'
+];
+const OBLAST_UA = [['sevastopol','Севастополь'],['crimea','АР Крим'],['vinnyts','Вінницька'],['volyn','Волинська'],['luhansk','Луганська'],['dnipro','Дніпропетровська'],
+  ['donetsk','Донецька'],['zhytomyr','Житомирська'],['zakarpat','Закарпатська'],['transcarp','Закарпатська'],['zaporiz','Запорізька'],['ivano','Івано-Франківська'],
+  ['kirovohrad','Кіровоградська'],['lviv','Львівська'],['mykolaiv','Миколаївська'],['odes','Одеська'],['poltav','Полтавська'],['rivne','Рівненська'],['sumy','Сумська'],
+  ['ternopil','Тернопільська'],['kharkiv','Харківська'],['kherson','Херсонська'],['khmelnyts','Хмельницька'],['cherkas','Черкаська'],['chernivts','Чернівецька'],['chernihiv','Чернігівська']];
+const oblastName = raw => {
+  const n = String(raw || '').toLowerCase();
+  if (/ky?iv|kiev/.test(n)) return /city/.test(n) ? 'Київ' : 'Київська';
+  const m = OBLAST_UA.find(p => n.includes(p[0])); return m ? m[1] : String(raw || '');
+};
+map.createPane('borders').style.zIndex = 392;
+const borderLayer = L.layerGroup().addTo(map);
+async function loadBorders() {
+  for (const u of BORDER_URLS) {
+    try {
+      const r = await fetch(u, { signal:AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) continue;
+      const gj = await r.json(), gs = simp(gj, .0005);
+      borderLayer.clearLayers();
+      L.geoJSON(gs, { pane:'borders', interactive:false, style:{ color:'#000', weight:3.4, opacity:.55, fill:false, smoothFactor:.3 } }).addTo(borderLayer);   // тінь для читабельності на супутнику
+      L.geoJSON(gs, { pane:'borders', interactive:false, style:{ color:'#fff', weight:1.4, opacity:1, fill:false, smoothFactor:.3 } }).addTo(borderLayer);   // штрих-пунктир
+      oblastMarks = gj.features.map(f => {
+        const c = turf.pointOnFeature(f).geometry.coordinates, nm = oblastName(f.properties.shapeName || f.properties.name);
+        return L.marker([c[1], c[0]], { interactive:false, keyboard:false, icon:L.divIcon({ className:'oblast', html:`<span>${nm}</span>`, iconSize:[0, 0] }) });
+      });
+      updateCities(); return;
+    } catch (e) { /* наступне дзеркало */ }
+  }
+  log('Кордони областей не завантажились');
+}
+
+// Села: Overpass API (OpenStreetMap) — міста, села й хутори в смузі ±15 км від справжнього фронту DeepState
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+async function loadVillages(runs) {
+  if (vilKey === dataKey) return;
+  const key = dataKey; vilKey = key;                                    // без повторних спроб, доки не зміняться дані
+  const total = runs.reduce((n, r) => n + r.length, 0), k = Math.max(1, Math.ceil(total / 450));
+  const parts = runs.map(r => r.filter((_, i) => i % k === 0 || i === r.length - 1).map(p => p[0].toFixed(3) + ',' + p[1].toFixed(3)).join(','));
+  const q = `[out:json][timeout:90];(${parts.map(c => `node(around:15000,${c})["place"~"^(village|town|hamlet)$"];`).join('')});out body;`;
+  const j = await overpass(q, 75000);
+  if (!j) { log('Села на фронті не завантажились (Overpass не відповів)'); return; }
+  const list = toList(j);
+  setVillages(list);
+  try { localStorage.setItem('dswar.vil.v2', JSON.stringify({ key, list })); } catch (e) {}   // кеш на добу — без повторного запиту
+  log(`Села на лінії фронту: ${list.length}`);
+}
+const vilIdx = new Set();
+function addSettlements(list) {   // додаємо нові; дублі (з фронту й з видимої області) відсікаємо; за кордоном України не показуємо
+  list.forEach(v => {
+    const key = v.n + '|' + v.lat.toFixed(3) + '|' + v.lon.toFixed(3);
+    if (vilIdx.has(key)) return;
+    if (UA_LIM) { try { if (!turf.booleanPointInPolygon(turf.point([v.lon, v.lat]), UA_LIM)) return; } catch (e) {} }
+    vilIdx.add(key);
+    villages.push({ key, n:v.n, t:v.t, p: v.t === 'town' ? 3 : v.t === 'hamlet' ? 5 : 4, ll:[v.lat, v.lon],
+      m:L.marker([v.lat, v.lon], { interactive:false, keyboard:false, icon:L.divIcon({ className:'city vil' + (v.ru ? ' ru' : '') + (v.t === 'hamlet' ? ' h' : ''), html:`<span>${v.n}</span>`, iconSize:[0, 0] }) }) });
+  });
+  updateCities();
+}
+const setVillages = addSettlements;
+function pruneVillages() {   // коли з'явився точний контур — прибираємо пункти за кордоном
+  if (!UA_LIM) return;
+  villages = villages.filter(v => {
+    let ok = true; try { ok = turf.booleanPointInPolygon(turf.point([v.ll[1], v.ll[0]]), UA_LIM); } catch (e) {}
+    if (!ok) vilLayer.removeLayer(v.m);
+    return ok;
+  });
+  vilIdx.clear(); villages.forEach(v => vilIdx.add(v.key));
+}
+let sideCache = null;
+function isRuPoint(lat, lon) {   // на якому боці фронту пункт (колір точки)
+  if (!ru) return false;
+  if (!sideCache || sideCache.ru !== ru) sideCache = { ru, s:turf.simplify(ru, { tolerance:.02 }) };
+  try { return turf.booleanPointInPolygon(turf.point([lon, lat]), sideCache.s); } catch (e) { return false; }
+}
+function toList(j) {
+  const list = [], seen = new Set();
+  (j.elements || []).forEach(e => {
+    const t = e.tags || {}, n = String(t['name:uk'] || t.name || '').replace(/[<>&]/g, '');
+    if (!n || cityNames.has(n)) return;
+    const k = n + e.lat.toFixed(3) + e.lon.toFixed(3); if (seen.has(k)) return; seen.add(k);
+    list.push({ n, lat:e.lat, lon:e.lon, t:t.place, ru:isRuPoint(e.lat, e.lon) });
+  });
+  return list;
+}
+async function overpass(q, ms) {
+  for (const url of OVERPASS) {
+    try {
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
+      const r = await fetch(url, { method:'POST', body:'data=' + encodeURIComponent(q), headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, signal:ctl.signal });
+      clearTimeout(to); if (!r.ok) continue; return await r.json();
+    } catch (e) { /* наступний сервер */ }
+  }
+  return null;
+}
+// Під час наближення (zoom ≥ 9) довантажуємо села й хутори для видимої області клітинками 0,5°; кожна клітинка — один раз
+const CELL = .5, cellDone = new Set();
+let vpTimer = 0, vpBusy = false, vpFail = 0;
+function scheduleViewport() { clearTimeout(vpTimer); vpTimer = setTimeout(loadViewport, 800); }
+async function loadViewport() {
+  if (vpBusy || map.getZoom() < 9 || baseKey === 'osm' || Date.now() - vpFail < 30000) return;
+  const b = map.getBounds().pad(.15), need = [];
+  for (let i = Math.floor(b.getSouth() / CELL); i <= Math.floor(b.getNorth() / CELL); i++)
+    for (let jx = Math.floor(b.getWest() / CELL); jx <= Math.floor(b.getEast() / CELL); jx++)
+      if (!cellDone.has(i + ':' + jx) && i * CELL >= 43.8 && i * CELL < 52.6 && jx * CELL > 21.5 && jx * CELL < 40.5) need.push([i, jx]);
+  if (!need.length) return;
+  const batch = need.slice(0, 8); vpBusy = true;
+  try {
+    const q = `[out:json][timeout:40];(${batch.map(([i, jx]) => `node["place"~"^(village|town|hamlet)$"](${i * CELL},${jx * CELL},${(i + 1) * CELL},${(jx + 1) * CELL});`).join('')});out body;`;
+    const res = await overpass(q, 45000);
+    if (res) { addSettlements(toList(res)); batch.forEach(([i, jx]) => cellDone.add(i + ':' + jx)); }
+    else { vpFail = Date.now(); log('Не вдалося завантажити населені пункти для цієї області — спробую пізніше'); }
+  } finally { vpBusy = false; }
+  if (need.length > batch.length) scheduleViewport();
+}
+map.on('moveend', scheduleViewport);
+function restoreVillages() {
+  try { const d = JSON.parse(localStorage.getItem('dswar.vil.v2')); if (d && d.key === dataKey && d.list.length) { vilKey = dataKey; setVillages(d.list); } } catch (e) {}
+}
+
+/* ============ 7. СТРІЛКИ: малюються пальцем, згладжені, зі світінням і анімованим потоком ============ */
+const sideCol = () => side === 'ua' ? COLORS.ua : COLORS.ru;
+function chaikin(pts, n) { // згладжування ламаної (алгоритм Чайкіна)
+  for (let k = 0; k < n; k++) {
+    const o = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i+1];
+      o.push([a[0]*.75 + b[0]*.25, a[1]*.75 + b[1]*.25], [a[0]*.25 + b[0]*.75, a[1]*.25 + b[1]*.75]);
+    }
+    o.push(pts[pts.length - 1]); pts = o;
+  }
+  return pts;
+}
+function makeArrow(latlngs, col, interactive) { // latlngs: [[lat,lng],…]
+  const pts = chaikin(latlngs, 2), n = pts.length, tip = L.latLng(pts[n-1]);
+  const pt = map.latLngToLayerPoint(tip); let j = n - 2, pb = map.latLngToLayerPoint(pts[j]);
+  while (j > 0 && pt.distanceTo(pb) < 12) pb = map.latLngToLayerPoint(pts[--j]);   // стабільний кут наконечника
+  const ang = Math.atan2(pt.x - pb.x, -(pt.y - pb.y)) * 180 / Math.PI;
+  const glow = L.polyline(pts, { color:col, weight:14, opacity:.28, lineCap:'round', lineJoin:'round', interactive:false });
+  const core = L.polyline(pts, { color:col, weight:5, opacity:.95, lineCap:'round', lineJoin:'round', interactive });
+  const flow = L.polyline(pts, { color:'#fff', weight:2, opacity:.85, lineCap:'round', className:'arrow-line', interactive:false });
+  const head = L.marker(tip, { interactive, icon:L.divIcon({ className:'', iconSize:[40,40], iconAnchor:[20,20],
+    html:`<svg width="40" height="40" viewBox="-20 -20 40 40" style="transform:rotate(${ang}deg);filter:drop-shadow(0 0 4px rgba(0,0,0,.7))"><path d="M0,-17 L14,12 L0,5 L-14,12Z" fill="${col}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>` }) });
+  return L.layerGroup([glow, core, flow, head]);
+}
+function endArrow() {
+  map.removeLayer(lassoLine);
+  const a = map.latLngToContainerPoint(lassoPts[0]), b = map.latLngToContainerPoint(lassoPts[lassoPts.length - 1]);
+  if (lassoPts.length < 2 || a.distanceTo(b) < 25) return;     // надто коротка — ігноруємо
+  addUserArrow(lassoPts.map(p => [p.lat, p.lng]), sideCol());
+}
+function addUserArrow(pts, col) {
+  const g = makeArrow(pts, col, true).addTo(map); g._data = { pts, col };
+  const rm = () => { if (tool === 'del') { map.removeLayer(g); arrows.splice(arrows.indexOf(g), 1); } };
+  g.eachLayer(l => l.on('click', rm)); arrows.push(g);
+}
+// Лінії наступу з DeepState (напрямки ударів ворога) — червоні стрілки
+const dsLayer = L.layerGroup().addTo(map); let dsCount = 0;
+function addAttack(c) {   // c: [[lon,lat],…] — червона стрілка атаки ворога + синій щит «оборона» перед вістрям
+  makeArrow(c.map(p => [p[1], p[0]]), COLORS.ru, false).addTo(dsLayer);
+  const n = c.length, t = turf.point(c[n - 1]), h = turf.bearing(turf.point(c[n - 2]), t), d = turf.destination(t, 7, h, { units:'kilometers' }).geometry.coordinates, s0 = c[0];
+  const mk = (ll, html) => L.marker([ll[1], ll[0]], { interactive:false, keyboard:false, icon:L.divIcon({ className:'ds-mk', iconSize:[0, 0], html }) }).addTo(dsLayer);
+  mk(d, '<span class="def">🛡</span><em>оборона</em>'); mk(s0, '<em class="atk">⚔ атака</em>'); dsCount++;
+}
+function moveArrows(parts, r0) {   // запасний варіант без API: стрілки атаки там, де ворог просунувся за тиждень
+  try {
+    const rings = (r0.geometry.type === 'Polygon' ? [r0.geometry.coordinates] : r0.geometry.coordinates).flat(), old = turf.multiLineString(rings);
+    parts.forEach(c => {
+      const ctr = turf.centroid(turf.polygon(c)), q = turf.nearestPointOnLine(old, ctr), br = turf.bearing(q, ctr), go = (pt, k) => turf.destination(pt, k, br, { units:'kilometers' }).geometry.coordinates;
+      addAttack([go(q, -12), go(ctr, 6)]);
+    });
+    if (parts.length) log(`⚔ Напрямки атак за рухом фронту (тиждень): ${parts.length}`);
+  } catch (e) { console.warn(e); }
+}
+function addDeepStateLines(features) {
+  dsLayer.clearLayers(); dsCount = 0; attackLines = []; hotCache = null;
+  features.forEach(f => {
+    const g = f.geometry; if (!g) return;
+    const lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+    lines.forEach(c => { if (c.length < 2) return; addAttack(c); attackLines.push(turf.lineString(c.map(p => [p[0], p[1]]))); });
+  });
+}
+
+/* ============ 8. ІНТЕРФЕЙС ============ */
+function setTool(t) {
+  tool = t; arrowStart = null; if (arrowTmp) map.removeLayer(arrowTmp); map.removeLayer(preview);
+  document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  const paintTool = t === 'brush' || t === 'lasso' || t === 'arrow';
+  paintTool ? map.dragging.disable() : map.dragging.enable();   // у режимі малювання палець малює, а не рухає карту
+  cont.style.touchAction = paintTool ? 'none' : '';
+  $('brushOpts').style.display = (t === 'brush' || t === 'lasso') ? 'flex' : 'none';
+  $('radiusOpts').style.display = t === 'brush' ? 'flex' : 'none';
+  $('arrowOpts').style.display = t === 'arrow' ? 'flex' : 'none';
+  $('opts').classList.toggle('show', paintTool || t === 'arrow');
+}
+document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+function chips(sel, attr, fn) {
+  document.querySelectorAll(sel).forEach(b => b.onclick = () => {
+    document.querySelectorAll(sel).forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset[attr]);
+  });
+}
+chips('[data-r]', 'r', v => radius = +v);
+chips('[data-m]', 'm', v => mode = v);
+chips('[data-s]', 's', v => side = v);
+
+$('undo').onclick = () => { if (undoStack.length) { const u = undoStack.pop(); ru = u.ru; killManual = u.km; render(); updateStats(); log('Скасовано останню зміну'); } };
+$('reset').onclick = async () => {
+  setStatus('Оновлення…', '#58a6ff');
+  const prev = { ru: clone(ru), gray: clone(gray) };
+  const ok = await loadFront(true);
+  if (!ok) { ru = prev.ru; gray = prev.gray; setStatus('Не вдалося оновити — повернено останній фронт', '#f0ad4e'); }
+  orig = { ru: clone(ru), gray: clone(gray) };
+  undoStack.length = 0; killManual = null; arrows.forEach(g => map.removeLayer(g)); arrows.length = 0; dirty = false;
+  $('log').innerHTML = ''; render(); updateStats(); log(`Повернено до фронту: ${SOURCES[srcKey].name} · ${dataKey}`); idle(loadMovement);
+};
+
+/* ============ 8b. БОКОВІ КНОПКИ: шар, лінії наступу, повний екран, сховати інтерфейс ============ */
+function setBase(k) {
+  map.removeLayer(baseLayer); baseKey = k; baseLayer = BASES[k].addTo(map); baseLayer.bringToBack();
+  $('layerBtn').querySelector('.ic').textContent = BASE_ICON[k]; try { localStorage.setItem('dswar.base', k); } catch (e) {}
+  updateCities(); if (k !== 'osm') scheduleViewport();
+}
+$('layerBtn').onclick = () => setBase(BASE_ORDER[(BASE_ORDER.indexOf(baseKey) + 1) % BASE_ORDER.length]);
+$('layerBtn').querySelector('.ic').textContent = BASE_ICON[baseKey];
+$('dsBtn').onclick = () => {
+  const on = map.hasLayer(dsLayer); on ? map.removeLayer(dsLayer) : dsLayer.addTo(map);
+  $('dsBtn').classList.toggle('off', on);
+  log(on ? 'Лінії наступу: сховано' : dsCount ? '⚔ Лінії наступу: 🔴 атака ворога · 🛡 наша оборона' : 'Стрілок поки немає: DeepState не віддав лінії, а фронт за тиждень майже не рухався');
+};
+$('uiToggle').onclick = () => { document.body.classList.toggle('ui-off'); setTimeout(() => map.invalidateSize(), 50); };
+const fsEl = document.documentElement, fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
+if (!fsReq) $('fsBtn').style.display = 'none';   // iPhone Safari не підтримує — там допоможе кнопка 👁
+$('fsBtn').onclick = () => {
+  if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else fsReq.call(fsEl);
+};
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, () => setTimeout(() => map.invalidateSize(), 100)));
+
+$('borderBtn').onclick = () => {
+  bordersOn = !bordersOn; $('borderBtn').classList.toggle('off', !bordersOn);
+  [borderLayer, uaBorder, worldLayer].forEach(l => bordersOn ? l.addTo(map) : map.removeLayer(l));
+  try { updateCities(); } catch (e) { /* не критично */ }
+  log(bordersOn ? 'Кордони: увімкнено (області, Україна, сусідні країни)' : 'Кордони: вимкнено');
+};
+// ---- Контури сусідніх країн: жовтий штрих + підписи (щоб було видно, де закінчується Україна)
+const NB = { POL:['Польща', 51.6, 21.0], BLR:['Білорусь', 53.0, 28.5], RUS:['Росія', 51.0, 41.5], MDA:['Молдова', 47.2, 28.6], ROU:['Румунія', 46.3, 25.0], HUN:['Угорщина', 47.2, 20.0], SVK:['Словаччина', 48.8, 19.5],
+             TUR:['Туреччина', 40.5, 33.5], BGR:['Болгарія', 42.9, 25.4], GEO:['Грузія', 42.2, 43.5], LTU:['Литва', 55.0, 24.0], LVA:['Латвія', 56.8, 25.0], KAZ:['Казахстан', 49.5, 50.5] };
+const worldLayer = L.layerGroup().addTo(map);
+async function loadWorld() {
+  for (const u of ['https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json', 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json']) {
+    try {
+      const r = await fetch(u, { signal:AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) continue;
+      const fs = (await r.json()).features.filter(f => NB[f.id]); if (!fs.length) continue;
+      worldLayer.clearLayers();
+      L.geoJSON(fs, { pane:'borders', interactive:false, style:{ color:'#000', weight:5, opacity:.6, fill:false } }).addTo(worldLayer);
+      L.geoJSON(fs, { pane:'borders', interactive:false, style:{ color:'#ffd166', weight:2.2, opacity:1, fill:false, dashArray:'8 4' } }).addTo(worldLayer);
+      Object.values(NB).forEach(([n, la, lo]) => L.marker([la, lo], { interactive:false, keyboard:false, icon:L.divIcon({ className:'cn-lbl', iconSize:[0, 0], html:`<span>${n}</span>` }) }).addTo(worldLayer));
+      return;
+    } catch (e) { /* наступне джерело */ }
+  }
+  log('Контури сусідніх країн не завантажились');
+}
+// ---- Точний контур України (geoBoundaries ADM0): синій фон, жирна лінія державного кордону, обрізання червоного
+const GB = 'releaseData/gbOpen/UKR/ADM0/geoBoundaries-UKR-ADM0';
+const UA0_STAGES = [   // 1) швидкі спрощені → синій фон з'являється одразу; 2) повна точність → кордон з Молдовою/Румунією
+  ['https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/' + GB + '_simplified.geojson', 'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/' + GB + '_simplified.geojson',
+   'https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries/UKR.geojson'],
+  ['https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/' + GB + '.geojson', 'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/' + GB + '.geojson']
+];
+const uaBorder = L.layerGroup().addTo(map);
+function clipToUA() {   // окупована територія не виходить за державний кордон (з запасом 3 км на похибку берегів)
+  if (!UA_LIM || !ru) return;
+  try { const c = turf.intersect(ru, UA_LIM); if (c) ru = c; } catch (e) { console.warn(e); }
+}
+function useRealOutline() {
+  ua = UA_REAL;
+  try { UA_LIM = turf.buffer(UA_BASE, 3, { units:'kilometers' }); uaMask = turf.buffer(UA_BASE, 8, { units:'kilometers' }); } catch (e) {}
+  pruneVillages();
+  if (!dirty) { clipToUA(); orig = { ru: clone(ru), gray: clone(gray) }; }
+  uaTint.clearLayers(); uaTint.addData(UA_REAL); uaTint.eachLayer(l => l.bringToBack());   // фон лишається під червоним
+  uaBorder.clearLayers();
+  L.geoJSON(UA_REAL, { pane:'borders', interactive:false, style:{ color:'#000', weight:6, opacity:.65, fill:false, smoothFactor:.3 } }).addTo(uaBorder);
+  L.geoJSON(UA_REAL, { pane:'borders', interactive:false, style:{ color:'#fff', weight:2.6, opacity:1, fill:false, smoothFactor:.3 } }).addTo(uaBorder);
+  simpCache = null; killCache = null; render(); updateStats();
+}
+async function loadUkraine() {
+  let ok = false;
+  for (const urls of UA0_STAGES) {
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, { signal:AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) continue;
+        const gj = await r.json(), g = mergePolys(gj.features || [gj]); if (!g) continue;
+        UA_REAL = simp(g, .0004); UA_BASE = simp(g, .003); useRealOutline(); ok = true; break;
+      } catch (e) { /* наступне джерело */ }
+    }
+  }
+  log(ok ? 'Точний контур України завантажено' : 'Точний контур не завантажився — лишився запасний контур');
+  if (!ok) { uaBorder.clearLayers(); [['#000', 6, .65], ['#fff', 2.6, 1]].forEach(([col, w, o]) => L.geoJSON(UA_OUTLINE, { pane:'borders', interactive:false, style:{ color:col, weight:w, opacity:o, fill:false } }).addTo(uaBorder)); }   // без мережі — хоча б запасний кордон
+}
+
+// ---- Пошук населеного пункту: спершу наші списки (миттєво), потім OpenStreetMap Nominatim
+const searchLayer = L.layerGroup().addTo(map);
+let qTimer = 0, qSeq = 0, qItems = [];
+const esc = t => String(t).replace(/[<>&"]/g, '');
+function localMatches(q) {
+  const t = q.toLowerCase(), out = [];
+  CITY_DATA.split(';').forEach(x => { const a = x.split('|'); if (a[0].toLowerCase().includes(t)) out.push({ n:a[0], lat:+a[1], lon:+a[2], sub:'місто' }); });
+  villages.forEach(v => { if (v.n.toLowerCase().includes(t)) out.push({ n:v.n, lat:v.ll[0], lon:v.ll[1], sub: v.t === 'town' ? 'містечко біля фронту' : v.t === 'hamlet' ? 'хутір біля фронту' : 'село біля фронту' }); });
+  return out.slice(0, 8);
+}
+function showResults(items, note) {
+  qItems = items;
+  $('qRes').innerHTML = items.map((it, i) => `<div class="qr" data-i="${i}">${esc(it.n)}<br><small>${esc(it.sub || '')}</small></div>`).join('') +
+    (note ? `<div class="qr"><small>${note}</small></div>` : '');
+  $('qRes').querySelectorAll('[data-i]').forEach(el => el.onclick = () => goTo(qItems[+el.dataset.i]));
+}
+async function runSearch(q) {
+  const my = ++qSeq, local = localMatches(q);
+  showResults(local, 'Шукаю в OpenStreetMap…');
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ format:'jsonv2', q, countrycodes:'ua', 'accept-language':'uk', limit:'8', featureType:'settlement', addressdetails:'1' }));
+    if (my !== qSeq) return;
+    const net = (await r.json()).map(x => ({ n: x.name || String(x.display_name).split(',')[0], lat:+x.lat, lon:+x.lon,
+      sub: [x.address && x.address.county, x.address && x.address.state].filter(Boolean).join(', ') || x.type }))
+      .filter(x => !local.some(l => l.n === x.n && Math.abs(l.lat - x.lat) < .05 && Math.abs(l.lon - x.lon) < .05));
+    showResults(local.concat(net), (local.length + net.length) ? '' : 'Нічого не знайдено');
+  } catch (e) { if (my === qSeq) showResults(local, local.length ? 'Онлайн-пошук недоступний — показано лише наші списки' : 'Онлайн-пошук недоступний'); }
+}
+function goTo(it) {
+  searchLayer.clearLayers();
+  L.marker([it.lat, it.lon], { interactive:false, keyboard:false, icon:L.divIcon({ className:'', iconSize:[0, 0],
+    html:`<div class="pin"><span>${esc(it.n)}</span><b>📍</b></div>` }) }).addTo(searchLayer);
+  map.flyTo([it.lat, it.lon], Math.max(map.getZoom(), 11), { duration:1.2 });
+  $('searchBox').classList.remove('show');
+}
+$('searchBtn').onclick = () => {
+  $('saveSheet').classList.remove('show'); closeFpv();
+  const on = $('searchBox').classList.toggle('show'); if (on) setTimeout(() => $('q').focus(), 50);
+};
+$('q').oninput = () => {
+  clearTimeout(qTimer); const q = $('q').value.trim();
+  if (q.length < 2) { $('qRes').innerHTML = ''; return; }
+  showResults(localMatches(q), '');
+  qTimer = setTimeout(() => runSearch(q), 600);          // пауза, щоб не навантажувати Nominatim
+};
+$('q').onkeydown = e => { if (e.key === 'Enter') { clearTimeout(qTimer); const q = $('q').value.trim(); if (q.length > 1) runSearch(q); } };
+$('qClear').onclick = () => { $('q').value = ''; $('qRes').innerHTML = ''; searchLayer.clearLayers(); };
+
+/* ---- FPV / Шахед / Patriot: радіус, запуск і перехоплення ---- */
+// Дальності орієнтовні (відкриті дані); v — швидкість в анімації, км/с; pk — імовірність влучання ракети
+const SPEC = {   // r — дальність, км; kmh — реальна швидкість; v — швидкість в анімації, км/с; m — масштаб іконки
+  fpv:  { t:'d', i:'fpv', c:'fpv', n:'FPV', r:10, v:3, kmh:100, big:.5 },
+  fpvf: { t:'d', i:'fpv', c:'fpv', n:'FPV (оптоволокно)', r:20, v:4, kmh:100, big:.5 },
+  g1:   { t:'d', i:'sh', c:'sh', n:'Герань-1', r:900, v:45, kmh:150, big:1.2, m:.8 },
+  g2:   { t:'d', i:'sh', c:'sh', n:'Герань-2', r:2000, v:50, kmh:185, big:1.5 },
+  g3:   { t:'d', i:'jet', c:'jet', n:'Герань-3', r:1000, v:70, kmh:600, big:1.5 },
+  g4:   { t:'d', i:'jet2', c:'jet', n:'Герань-4', r:900, v:75, kmh:450, big:1.7, m:1.1 },
+  g5:   { t:'d', i:'jet2', c:'jet', n:'Герань-5', r:1000, v:90, kmh:600, big:2, m:1.2 },
+  ger:  { t:'d', i:'dec', c:'sh', n:'Гербера', r:600, v:45, kmh:170, big:.4, m:.8 },
+  par:  { t:'d', i:'dec', c:'sh', n:'Парадія', r:500, v:45, kmh:150, big:.4, m:.8 },
+  rub:  { t:'d', i:'fw', c:'sh', n:'Рубака', r:500, v:45, kmh:150, big:1, m:.8 },
+  sc:   { t:'d', i:'fw', c:'sh', n:'AQ-400 Scythe', r:750, v:45, kmh:150, big:1.2 },
+  bob:  { t:'d', i:'fw', c:'sh', n:'Бобер', r:800, v:50, kmh:200, big:1, m:.9 },
+  a196: { t:'d', i:'fw', c:'sh', n:'Ан-196 Лютий', r:1000, v:50, kmh:170, big:1.4, m:1.1 },
+  fp1:  { t:'d', i:'fp1m', c:'sh', n:'FP-1', r:1600, v:50, kmh:150, big:1.5 },
+  lan1: { t:'d', i:'lan', c:'fpv', n:'Ланцет-1', r:30, v:4, kmh:80, big:.5, m:.8 },
+  lan3: { t:'d', i:'lan', c:'fpv', n:'Ланцет-3', r:40, v:5, kmh:90, big:.6 },
+  // ППО: mv — реальна швидкість ракети, км/с; rd — реакція (мс), gap — пауза між пусками, rl — перезарядка (реальні значення)
+  pac2: { t:'s', i:'sam', n:'Patriot PAC-2', r:160, v:80, mv:1.4, rd:6000, gap:4000, rl:1800000, mag:8, pk:{ fpv:.08, sh:.65, jet:.45 } },
+  pac3: { t:'s', i:'sam', n:'Patriot PAC-3 MSE', r:35, v:50, mv:1.7, rd:6000, gap:3000, rl:1800000, mag:16, pk:{ fpv:.12, sh:.88, jet:.7 } },
+  samt: { t:'s', i:'samt', n:'SAMP/T (Mamba)', r:120, v:70, mv:1.5, rd:6000, gap:3000, rl:1800000, mag:16, pk:{ fpv:.08, sh:.85, jet:.65 } },
+  nas:  { t:'s', i:'nas', n:'NASAMS', r:50, v:50, mv:1.4, rd:5000, gap:2500, rl:1200000, mag:12, pk:{ fpv:.15, sh:.85, jet:.6 } },
+  hawk: { t:'s', i:'hawk', n:'HAWK Phase III', r:45, v:45, mv:.8, rd:7000, gap:4000, rl:1800000, mag:9, pk:{ fpv:.05, sh:.65, jet:.35 } },
+  s400: { t:'s', i:'s400', n:'С-400 Тріумф', r:250, v:90, mv:2.1, rd:8000, gap:3000, rl:2400000, mag:16, pk:{ fpv:.06, sh:.85, jet:.65 } },
+  s300: { t:'s', i:'s300', n:'С-300В4', r:200, v:80, mv:2.4, rd:8000, gap:3000, rl:2400000, mag:12, pk:{ fpv:.05, sh:.8, jet:.6 } }
+};
+const SV = {
+  // ── FPV-дрон: X-рама зверху, 4 мотори по кутах, бомба знизу ──
+  fpv: ['-22 -22 44 44', 38, 38,
+    '<line x1="-13" y1="-13" x2="13" y2="13" stroke="#2a2f35" stroke-width="3.5" stroke-linecap="round"/>' +
+    '<line x1="13" y1="-13" x2="-13" y2="13" stroke="#2a2f35" stroke-width="3.5" stroke-linecap="round"/>' +
+    '<g fill="#8a9db5" stroke="#3d4a58" stroke-width=".9"><circle cx="-14" cy="-14" r="6.5"/><circle cx="14" cy="-14" r="6.5"/><circle cx="-14" cy="14" r="6.5"/><circle cx="14" cy="14" r="6.5"/></g>' +
+    '<g fill="#0f1218"><circle cx="-14" cy="-14" r="2.5"/><circle cx="14" cy="-14" r="2.5"/><circle cx="-14" cy="14" r="2.5"/><circle cx="14" cy="14" r="2.5"/></g>' +
+    '<rect x="-4" y="-6" width="8" height="12" rx="3" fill="#2f353b" stroke="#0e1113"/>' +
+    '<ellipse cx="0" cy="6" rx="2.5" ry="4" fill="#5a6b3a" stroke="#2b3220" stroke-width=".7"/>'],
+  // ── Герань-1/2 (Shahed): дельта зверху, ніс вгору, двигун ззаду ──
+  sh: ['-28 -32 56 60', 48, 52,
+    '<path d="M0-30 22 20v5L1 14 0 22-1 14-22 25v-5Z" fill="#d8d4c8" stroke="#5a5550" stroke-width="1" stroke-linejoin="round"/>' +
+    '<path d="M0-30 1.5-8 1.5 22h-3L-1.5-8Z" fill="#b0aca2"/>' +
+    '<ellipse cx="0" cy="22" rx="6" ry="2.5" fill="#1a1a1a"/>' +
+    '<circle cx="0" cy="22" r="3.5" fill="#333" stroke="#555" stroke-width=".5"/>'],
+  // ── Герань-3/4/5 — реактивна дельта, сопло ззаду ──
+  jet: ['-28 -32 56 62', 48, 54,
+    '<path d="M0-30 24 18v5L2 12 0 26-2 12-24 23v-5Z" fill="#b0b5ba" stroke="#454c53" stroke-width="1" stroke-linejoin="round"/>' +
+    '<path d="M0-30 2-8 2 16h-4L-2-8Z" fill="#8a9098"/>' +
+    '<ellipse cx="0" cy="20" rx="4.5" ry="2" fill="#ff7700" opacity=".7"/>' +
+    '<circle cx="0" cy="17" r="4" fill="#1a1a1a"/>'],
+  jet2: ['-28 -32 56 64', 48, 56,
+    '<path d="M0-30 26 16v6L3 10 2 22 7 28H-7l5-6-1-12-23 12v-6Z" fill="#9aa0a6" stroke="#454c53" stroke-width="1" stroke-linejoin="round"/>' +
+    '<path d="M0-30 2-10 1.5 18h-3L-2-10Z" fill="#787e84"/>' +
+    '<ellipse cx="0" cy="22" rx="5" ry="2.2" fill="#ff7700" opacity=".65"/>'],
+  // ── Ланцет-1/3: X-крило однакові 4 лопаті ──
+  lan: ['-24 -24 48 48', 42, 42,
+    '<g stroke="#adb3b8" stroke-width="5" stroke-linecap="round">' +
+    '<line x1="-18" y1="-18" x2="18" y2="18"/><line x1="18" y1="-18" x2="-18" y2="18"/></g>' +
+    '<rect x="-2.8" y="-18" width="5.6" height="36" rx="2.2" fill="#b2b7bb" stroke="#40474e" stroke-width=".8"/>' +
+    '<ellipse cy="-14" rx="2" ry="3" fill="#1e2a36"/>' +
+    '<ellipse cy="14" rx="4.5" ry="1.2" fill="#111" opacity=".7"/>'],
+  // ── Класичне фіксоване крило з пропелером ззаду (Рубака, Бобер, Ан-196, Scythe) ──
+  fw: ['-28 -32 56 62', 46, 52,
+    '<rect x="-2.5" y="-32" width="5" height="60" rx="2" fill="#cdd0d3" stroke="#4a5158" stroke-width=".8"/>' +
+    '<path d="M-2.5-8-26-4v6l23.5-3ZM2.5-8 26-4v6L2.5-1Z" fill="#d8dce0" stroke="#4a5158" stroke-width=".8"/>' +
+    '<path d="M-2.5 16-12 20v4l9.5-2ZM2.5 16 12 20v4L2.5 18Z" fill="#d0d4d8" stroke="#4a5158" stroke-width=".7"/>' +
+    '<ellipse cy="26" rx="8" ry="1.8" fill="#111" opacity=".55"/>'],
+  // ── FP-1 крилатий снаряд: вузьке тіло + пряме крило + хвіст ──
+  fp1m: ['-22 -34 44 66', 38, 56,
+    '<rect x="-2.5" y="-34" width="5" height="64" rx="2" fill="#ccd0d3" stroke="#454c53" stroke-width=".8"/>' +
+    '<path d="M-2.5-12-20 4v4l17.5-2.5ZM2.5-12 20 4v4L2.5-0.5Z" fill="#b8bcc0" stroke="#454c53" stroke-width=".7"/>' +
+    '<path d="M-2.5 22-8 28v3l5.5-2ZM2.5 22 8 28v3L2.5 24Z" fill="#b0b4b8" stroke="#454c53" stroke-width=".7"/>' +
+    '<ellipse cy="-30" rx="2.5" ry="4.5" fill="#1e2a36" opacity=".9"/>' +
+    '<ellipse cy="28" rx="6" ry="1.5" fill="#222"/>'],
+  // ── Гербера / Парадія: малий дельта-камікадзе ──
+  dec: ['-22 -22 44 42', 38, 36,
+    '<path d="M0-20 3-6 20 14v4L1 10-1 18-3 10-20 18v-4L-3-6Z" fill="#d4ccbe" stroke="#5a5348" stroke-width=".9" stroke-linejoin="round"/>' +
+    '<path d="M0-20 1.5-6 1 18h-2.2L-1.5-6Z" fill="#a8a39a"/>'],
+  // ── Ракета ЗРК (що летить) ──
+  msl: ['-7 -20 14 40', 12, 34,
+    '<path d="M0-15 2-8v18l2.5 5v2H-4.5v-2L-2-8Z" fill="#e0e4e8" stroke="#50585f" stroke-width=".7"/>' +
+    '<path d="M0-15 1.8-8H-1.8Z" fill="#c0392b"/>' +
+    '<path d="M-2 18Q0 26 2 18Z" fill="#ffb020"/>'],
+  // ══════ ППО: вигляд зверху — шасі + пускова ══════
+  // Patriot: 2-осьовий тягач + 4 ракети в TP-контейнері
+  sam: ['0 0 72 44', 64, 38,
+    // шасі
+    '<rect x="2" y="28" width="60" height="10" rx="2.5" fill="#3d4a28" stroke="#1a1d11"/>' +
+    '<g fill="#1c1f22" stroke="#666" stroke-width=".6"><circle cx="12" cy="38" r="4"/><circle cx="26" cy="38" r="4"/><circle cx="46" cy="38" r="4"/><circle cx="60" cy="38" r="4"/></g>' +
+    // пускова рама
+    '<rect x="6" y="10" width="42" height="20" rx="2" fill="#4a5c2e" stroke="#2b3220"/>' +
+    // 4 ракети в контейнерах
+    '<g fill="#d4d8dc" stroke="#555" stroke-width=".5">' +
+    '<rect x="9" y="12" width="8" height="16" rx="1.5"/><rect x="19" y="12" width="8" height="16" rx="1.5"/><rect x="29" y="12" width="8" height="16" rx="1.5"/><rect x="39" y="12" width="8" height="16" rx="1.5"/></g>' +
+    '<g fill="#333"><ellipse cx="13" cy="13" rx="2.5" ry="1.5"/><ellipse cx="23" cy="13" rx="2.5" ry="1.5"/><ellipse cx="33" cy="13" rx="2.5" ry="1.5"/><ellipse cx="43" cy="13" rx="2.5" ry="1.5"/></g>' +
+    // кабіна
+    '<rect x="52" y="14" width="14" height="14" rx="2" fill="#506030" stroke="#2b3220"/>' +
+    '<rect x="55" y="16" width="8" height="5" rx="1" fill="#8dc0e0" opacity=".7"/>'],
+  // SAMP/T (Mamba): вертикальні VLS-комірки 4×2
+  samt: ['0 0 72 44', 64, 38,
+    '<rect x="2" y="28" width="60" height="10" rx="2.5" fill="#3d4a28" stroke="#1a1d11"/>' +
+    '<g fill="#1c1f22" stroke="#666" stroke-width=".6"><circle cx="12" cy="38" r="4"/><circle cx="26" cy="38" r="4"/><circle cx="46" cy="38" r="4"/><circle cx="60" cy="38" r="4"/></g>' +
+    '<rect x="6" y="8" width="46" height="22" rx="2" fill="#4a5c2e" stroke="#2b3220"/>' +
+    '<g fill="#8dc0e0" stroke="#2b3220" stroke-width=".5">' +
+    '<circle cx="14" cy="14" r="4.5"/><circle cx="24" cy="14" r="4.5"/><circle cx="34" cy="14" r="4.5"/><circle cx="44" cy="14" r="4.5"/>' +
+    '<circle cx="14" cy="24" r="4.5"/><circle cx="24" cy="24" r="4.5"/><circle cx="34" cy="24" r="4.5"/><circle cx="44" cy="24" r="4.5"/></g>' +
+    '<rect x="52" y="14" width="14" height="14" rx="2" fill="#506030" stroke="#2b3220"/>' +
+    '<rect x="55" y="16" width="8" height="5" rx="1" fill="#8dc0e0" opacity=".7"/>'],
+  // NASAMS: 3 контейнери по 8 ракет AIM-120 горизонтально
+  nas: ['0 0 72 44', 64, 38,
+    '<rect x="2" y="28" width="60" height="10" rx="2.5" fill="#3d4a28" stroke="#1a1d11"/>' +
+    '<g fill="#1c1f22" stroke="#666" stroke-width=".6"><circle cx="10" cy="38" r="3.5"/><circle cx="22" cy="38" r="3.5"/><circle cx="50" cy="38" r="3.5"/><circle cx="62" cy="38" r="3.5"/></g>' +
+    '<g fill="#5a6b38" stroke="#2b3220"><rect x="6" y="10" width="14" height="20" rx="1.5"/><rect x="22" y="10" width="14" height="20" rx="1.5"/><rect x="38" y="10" width="14" height="20" rx="1.5"/></g>' +
+    '<g fill="#cdd0d3" stroke="#555" stroke-width=".4"><rect x="8" y="12" width="3" height="8" rx="1"/><rect x="12" y="12" width="3" height="8" rx="1"/><rect x="16" y="12" width="3" height="8" rx="1"/>' +
+    '<rect x="24" y="12" width="3" height="8" rx="1"/><rect x="28" y="12" width="3" height="8" rx="1"/><rect x="32" y="12" width="3" height="8" rx="1"/>' +
+    '<rect x="40" y="12" width="3" height="8" rx="1"/><rect x="44" y="12" width="3" height="8" rx="1"/><rect x="48" y="12" width="3" height="8" rx="1"/></g>'],
+  // HAWK Phase III: 3 ракети на поворотній рамі
+  hawk: ['0 0 72 44', 64, 38,
+    '<rect x="2" y="28" width="60" height="10" rx="2.5" fill="#62686e" stroke="#3a3e42"/>' +
+    '<g fill="#1c1f22" stroke="#666" stroke-width=".6"><circle cx="12" cy="38" r="4"/><circle cx="32" cy="38" r="4"/><circle cx="62" cy="38" r="4"/></g>' +
+    '<g transform="rotate(-35 36 18)">' +
+    '<rect x="6" y="16" width="52" height="5" rx="1.5" fill="#787e84" stroke="#4a5158"/>' +
+    '<g fill="#c0c8d0" stroke="#505860" stroke-width=".6"><ellipse cx="16" cy="18.5" rx="3.5" ry="11"/><ellipse cx="31" cy="18.5" rx="3.5" ry="11"/><ellipse cx="46" cy="18.5" rx="3.5" ry="11"/></g></g>'],
+  // С-400: 4 довгі ракети 40Н6/48Н6
+  s400: ['0 0 72 44', 64, 38,
+    '<rect x="2" y="28" width="60" height="14" rx="3" fill="#2a3018" stroke="#1a1d11"/>' +
+    '<rect x="2" y="22" width="60" height="8" rx="2" fill="#3a4822" stroke="#1a1d11"/>' +
+    '<g fill="#1c1f22" stroke="#555" stroke-width=".6"><circle cx="10" cy="40" r="4.5"/><circle cx="24" cy="40" r="4.5"/><circle cx="48" cy="40" r="4.5"/><circle cx="62" cy="40" r="4.5"/></g>' +
+    '<g fill="#c8ccd0" stroke="#505860" stroke-width=".5"><ellipse cx="13" cy="16" rx="3.5" ry="14"/><ellipse cx="25" cy="16" rx="3.5" ry="14"/><ellipse cx="37" cy="16" rx="3.5" ry="14"/><ellipse cx="49" cy="16" rx="3.5" ry="14"/></g>' +
+    '<g fill="#c0392b"><ellipse cx="13" cy="3" rx="2" ry="1.5"/><ellipse cx="25" cy="3" rx="2" ry="1.5"/><ellipse cx="37" cy="3" rx="2" ry="1.5"/><ellipse cx="49" cy="3" rx="2" ry="1.5"/></g>'],
+  // С-300В4: гусенична рама + 4 ракети
+  s300: ['0 0 72 44', 64, 38,
+    '<rect x="2" y="26" width="60" height="16" rx="3" fill="#1c1f22" stroke="#555"/>' +
+    '<rect x="4" y="24" width="56" height="8" rx="2" fill="#3a4822" stroke="#1a1d11"/>' +
+    '<g fill="#1c1f22" stroke="#666" stroke-width=".5">' +
+    '<rect x="3" y="38" width="10" height="4" rx="2"/><rect x="18" y="38" width="10" height="4" rx="2"/><rect x="44" y="38" width="10" height="4" rx="2"/><rect x="59" y="38" width="10" height="4" rx="2"/></g>' +
+    '<g fill="#b8bcc0" stroke="#50585f" stroke-width=".5"><ellipse cx="13" cy="15" rx="4" ry="13"/><ellipse cx="27" cy="15" rx="4" ry="13"/><ellipse cx="41" cy="15" rx="4" ry="13"/><ellipse cx="55" cy="15" rx="4" ry="13"/></g>' +
+    '<g fill="#c0392b"><ellipse cx="13" cy="3" rx="2.2" ry="1.5"/><ellipse cx="27" cy="3" rx="2.2" ry="1.5"/><ellipse cx="41" cy="3" rx="2.2" ry="1.5"/><ellipse cx="55" cy="3" rx="2.2" ry="1.5"/></g>']
+};
+const WH = '<g fill="#1c1f22" stroke="#555"><circle cx="11" cy="35" r="4.3"/><circle cx="25" cy="35" r="4.3"/><circle cx="39" cy="35" r="4.3"/><circle cx="52" cy="35" r="4.3"/></g>';
+const CH = '<rect x="3" y="27" width="56" height="7" rx="2" fill="#566039" stroke="#2b3220"/><path d="M46 27V18h8l5 6v3Z" fill="#6f7c4b" stroke="#2b3220"/><path d="M48 20h4l2 3h-6Z" fill="#9ec7e6"/>';
+const TR = '<rect x="3" y="30" width="56" height="8" rx="4" fill="#1c1f22" stroke="#666"/><rect x="6" y="24" width="50" height="8" rx="2" fill="#566039" stroke="#2b3220"/>';
+const CAN = (n, a, px, py, Lw, h, c) => `<g transform="rotate(${a} ${px} ${py})">` + Array.from({ length:n }, (_, i) => `<rect x="${px}" y="${py - h * (i + 1)}" width="${Lw}" height="${h - .5}" rx="1" fill="${c}" stroke="#2b3220"/><rect x="${px + Lw}" y="${py - h * (i + 1)}" width="3" height="${h - .5}" fill="#d9dde0"/>`).join('') + '</g>';
+// додаткові іконки через Object.assign (dec, fw, fp1m, lan вже в SV)
+Object.assign(SV, {});   // (розширення прибрано — всі силуети вже в SV вище)
+const ico = (k, rot, m = 1) => `<svg viewBox="${SV[k][0]}" width="${SV[k][1] * m}" height="${SV[k][2] * m}"><g${rot ? ' class="rot"' : ''}>${SV[k][3]}</g></svg>`;
+const setRot = (mk, deg) => { const g = mk._icon && mk._icon.querySelector('.rot'); if (g) g.style.transform = `rotate(${deg}deg)`; };
+const fpvBrg = (a, b) => { const p = map.latLngToLayerPoint(a), q = map.latLngToLayerPoint(b); return Math.atan2(q.x - p.x, p.y - q.y) * 180 / Math.PI; };
+const flyIcon = (k, m) => L.divIcon({ className:'fpv-fl', iconSize:[0, 0], html:ico(k, 1, m) });
+
+const fpvLayer = L.layerGroup().addTo(map), units = [], flights = [], missiles = [];
+let fpvOn = false, fpvGroup = 'd', fpvKey = 'fpv', launchArm = false, tgtMk = null, fpvId = 0, looping = false;
+let realD = false, realS = false, TS = 60;   // режим реалістичності: БПЛА / ППО, прискорення часу
+const fpvKeys = { d:'fpv', s:'pac3' };
+const SUBS = { d:[['fpv', 'FPV · 10 км'], ['fpvf', 'FPV оптоволокно · 20 км'], ['lan1', 'Ланцет-1 · 30 км'], ['lan3', 'Ланцет-3 · 40 км'], ['g1', 'Герань-1 · 900 км'], ['g2', 'Герань-2 · 2000 км'], ['g3', 'Герань-3 · 1000 км'], ['g4', 'Герань-4 · 900 км'], ['g5', 'Герань-5 · 1000 км'],
+                ['ger', 'Гербера · 600 км'], ['par', 'Парадія · 500 км'], ['rub', 'Рубака · 500 км'], ['sc', 'AQ-400 Scythe · 750 км'], ['bob', 'Бобер · 800 км'], ['a196', 'Ан-196 Лютий · 1000 км'], ['fp1', 'FP-1 · 1600 км']],
+               s:[['pac2', 'Patriot PAC-2 · 160 км'], ['pac3', 'Patriot PAC-3 · 35 км'], ['samt', 'SAMP/T · 120 км'], ['nas', 'NASAMS · 50 км'], ['hawk', 'HAWK PIII · 45 км'], ['s400', 'С-400 · 250 км'], ['s300', 'С-300В4 · 200 км']] };
+const uLabel = u => `${u.sp.n} · ${u.sp.r} км` + (u.sp.t === 's' ? (u.reloadAt ? ' · ⏳' : ` · 🚀${u.mag}`) : '');
+const uIcon = u => L.divIcon({ className:'fpv-pin', iconSize:[0, 0], html:ico(u.sp.i, 0, u.sp.m) + `<span>${uLabel(u)}</span>` });
+
+function fpvUi() {
+  document.querySelectorAll('[data-u]').forEach(b => b.classList.toggle('on', b.dataset.u === fpvGroup));
+  const chip = (a, t, on) => `<button class="chip${on ? ' on' : ''}" ${a}>${t}</button>`;
+  $('fpvSub').innerHTML = fpvGroup === 'r'
+    ? chip('data-rz="d"', '🛸 БПЛА: реальна швидкість', realD) + chip('data-rz="s"', '🛡 ППО: швидкість ракети, реакція, перезарядка', realS)
+      + (realD || realS ? '<span class="text-[12px] text-gray-400 w-full">Прискорення часу:</span>' + [1, 10, 60, 300].map(t => chip(`data-ts="${t}"`, '×' + t, TS === t)).join('') : '')
+    : SUBS[fpvGroup].map(([k, t]) => chip(`data-k="${k}"`, t, k === fpvKey)).join('');
+  $('fpvGo').classList.toggle('on', launchArm); fpvMiniUi();
+  $('fpvHint').textContent = fpvGroup === 'r' ? 'Реалістичний режим: швидкість, реакція ППО та перезарядка — як у житті. Без прискорення політ триває години.'
+    : launchArm ? '🎯 Тапніть ціль на карті — дрони вилетять' : 'Тап на карту — поставити (точки можна тягнути). Потім «Запуск» і тап на ціль.';
+}
+function fpvMiniUi() { $('fpvMiniT').textContent = launchArm ? '🎯 Тапніть ціль на карті' : `Ставлю: ${SPEC[fpvKey].n}`; $('fpvMiniGo').classList.toggle('on', launchArm); }
+function openFpv() { $('searchBox').classList.remove('show'); $('saveSheet').classList.remove('show'); fpvOn = true; $('fpvMini').classList.remove('show'); $('fpvBox').classList.add('show'); $('fpvBtn').classList.add('on'); fpvUi(); }
+function minFpv() { $('fpvBox').classList.remove('show'); $('fpvMini').classList.add('show'); fpvMiniUi(); }   // панель сховано, ставити на карті можна далі
+function closeFpv() { fpvOn = launchArm = false; $('fpvBox').classList.remove('show'); $('fpvMini').classList.remove('show'); $('fpvBtn').classList.remove('on'); }
+function removeUnit(u) { fpvLayer.removeLayer(u.g); units.splice(units.indexOf(u), 1); }
+function addUnit(ll, key) {
+  const sp = SPEC[key], s = sp.t === 's', col = s ? '#4aa3ff' : '#ffb020', g = L.layerGroup().addTo(fpvLayer);
+  const ring = L.circle(ll, { pane:'fpv', radius:sp.r * 1000, color:col, weight:1.5, opacity:.85, dashArray:s ? '' : '6 6',
+    fillColor:col, fillOpacity:s ? .05 : .07, interactive:false }).addTo(g);
+  const u = { key, sp, g, mag:sp.mag || 0, id:++fpvId };
+  u.mk = L.marker(ll, { draggable:true, keyboard:false, icon:uIcon(u) }).addTo(g);
+  u.mk.on('drag', () => ring.setLatLng(u.mk.getLatLng()));
+  units.push(u);
+}
+function loop() { if (!looping) { looping = true; requestAnimationFrame(fpvTick); } }
+function fpvTick() {
+  const now = performance.now();
+  flights.slice().forEach(f => stepFlight(f, now));
+  missiles.slice().forEach(m => stepMissile(m, now));
+  units.forEach(u => {
+    if (u.reloadAt && now >= u.reloadAt) { u.reloadAt = 0; u.mag = u.sp.mag; u.mk.setIcon(uIcon(u)); log(`🔄 ${u.sp.n}: перезаряджено`); }
+    if (u.sp.t === 's' && u.mag > 0) flights.forEach(f => engage(u, f, now));
+  });
+  if (flights.length || missiles.length || units.some(u => u.reloadAt)) requestAnimationFrame(fpvTick); else looping = false;
+}
+function launch(ll) {
+  const ds = units.filter(u => u.sp.t === 'd'); launchArm = false; fpvUi();
+  if (!ds.length) return log('Спершу поставте дрон на карті');
+  if (tgtMk) map.removeLayer(tgtMk);
+  tgtMk = L.marker(ll, { interactive:false, keyboard:false, icon:L.divIcon({ className:'', iconSize:[0, 0], html:'<div class="pin"><b>🎯</b></div>' }) }).addTo(map);
+  ds.forEach(u => {
+    const a = u.mk.getLatLng(), dist = a.distanceTo(ll) / 1000; if (dist < .05) return;
+    const leg = Math.min(dist, u.sp.r), k = leg / dist, b = L.latLng(a.lat + (ll.lat - a.lat) * k, a.lng + (ll.lng - a.lng) * k);
+    removeUnit(u);
+    const f = { sp:u.sp, a, b, pos:a, over:dist > u.sp.r, t0:performance.now(), dur:leg / (realD ? u.sp.kmh / 3600 : u.sp.v) * 1000 / (realD ? TS : 1), shots:{}, seen:{}, inb:{} };
+    f.mk = L.marker(a, { icon:flyIcon(u.sp.i, u.sp.m), interactive:false, keyboard:false, zIndexOffset:900 }).addTo(map);
+    f.trail = L.polyline([a, a], { color:'#ffb020', weight:1.5, opacity:.7, dashArray:'2 5', interactive:false }).addTo(map);
+    setRot(f.mk, fpvBrg(a, b)); flights.push(f);
+  });
+  log(`🚀 Запуск: ${ds.length} × дрон`); loop();
+}
+function dropFlight(f) { f.dead = true; flights.splice(flights.indexOf(f), 1); map.removeLayer(f.mk); setTimeout(() => map.removeLayer(f.trail), 5000); }
+function stepFlight(f, now) {
+  const p = Math.min((now - f.t0) / f.dur, 1);
+  f.pos = L.latLng(f.a.lat + (f.b.lat - f.a.lat) * p, f.a.lng + (f.b.lng - f.a.lng) * p);
+  f.mk.setLatLng(f.pos); f.trail.setLatLngs([f.a, f.pos]);
+  if (p < 1) return;
+  dropFlight(f);
+  if (f.over) { explode(f.pos, .4); log(`⛽ ${f.sp.n}: закінчилось пальне, впав`); }
+  else { explode(f.pos, f.sp.big); boomSound(); log(`💥 ${f.sp.n}: влучання в ціль`); }
+}
+function engage(u, f, now) {   // ППО бачить ціль → через 0,7 с пуск; до 2 ракет на ціль (стріляй-дивись-стріляй)
+  if (f.dead || f.inb[u.id] || u.reloadAt || now < (u.busy || 0) || (f.shots[u.id] || 0) >= 2) return;
+  const a = u.mk.getLatLng(), d = a.distanceTo(f.pos) / 1000;
+  if (d > u.sp.r) { f.seen[u.id] = 0; return; }
+  f.seen[u.id] = f.seen[u.id] || now;
+  if (now - f.seen[u.id] < (realS ? u.sp.rd / TS : 700)) return;
+  u.mag--; u.busy = now + (realS ? u.sp.gap / TS : 0);
+  if (!u.mag) { u.reloadAt = now + (realS ? u.sp.rl / TS : 8000); log(`⏳ ${u.sp.n}: перезарядка`); }
+  u.mk.setIcon(uIcon(u)); f.shots[u.id] = (f.shots[u.id] || 0) + 1; f.inb[u.id] = true;
+  const m = { u, f, a, tg:f.pos, t0:now, dur:realS ? Math.max(150, d / u.sp.mv * 1000 / TS) : Math.max(800, Math.min(2600, d / u.sp.v * 1000)) };
+  m.mk = L.marker(a, { icon:flyIcon('msl'), interactive:false, keyboard:false, zIndexOffset:950 }).addTo(map);
+  m.trail = L.polyline([a, a], { color:'#e8ecef', weight:2, opacity:.8, interactive:false }).addTo(map);
+  missiles.push(m); log(`🚀 ${u.sp.n} → ${f.sp.n}`);
+}
+function stepMissile(m, now) {
+  const p = Math.min((now - m.t0) / m.dur, 1), e = realS ? p : p * p, f = m.f;
+  if (!f.dead) m.tg = f.pos;
+  const pos = L.latLng(m.a.lat + (m.tg.lat - m.a.lat) * e, m.a.lng + (m.tg.lng - m.a.lng) * e);
+  m.mk.setLatLng(pos); m.trail.setLatLngs([m.a, pos]); setRot(m.mk, fpvBrg(m.a, m.tg));
+  if (p < 1) return;
+  missiles.splice(missiles.indexOf(m), 1); map.removeLayer(m.mk); setTimeout(() => map.removeLayer(m.trail), 2500);
+  f.inb[m.u.id] = false; f.seen[m.u.id] = performance.now();
+  if (f.dead) return explode(pos, .3);                       // ціль уже знищена/долетіла — ракета самознищується
+  if (Math.random() < m.u.sp.pk[f.sp.c]) {                    // влучила
+    dropFlight(f); explode(pos, f.sp.c === 'sh' ? 1 : .6); boomSound(); log(`✅ Збито: ${f.sp.n} (${m.u.sp.n})`);
+  } else { explode(pos, .3); log(`❌ Промах: ${m.u.sp.n} не влучила`); }   // промах — ціль летить далі
+}
+function fpvClearAll() {
+  units.slice().forEach(removeUnit);
+  flights.splice(0).forEach(f => { map.removeLayer(f.mk); map.removeLayer(f.trail); f.dead = true; });
+  missiles.splice(0).forEach(m => { map.removeLayer(m.mk); map.removeLayer(m.trail); });
+  if (tgtMk) { map.removeLayer(tgtMk); tgtMk = null; }
+}
+map.on('click', e => { if (!fpvOn || tool !== 'pan') return; launchArm ? launch(e.latlng) : addUnit(e.latlng, fpvKey); });
+$('fpvBtn').onclick = () => { !fpvOn || $('fpvMini').classList.contains('show') ? openFpv() : minFpv(); };   // 🛸: відкрити ↔ згорнути
+document.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { fpvGroup = b.dataset.u; if (fpvGroup !== 'r') fpvKey = fpvKeys[fpvGroup]; fpvUi(); });
+$('fpvSub').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.k) fpvKey = fpvKeys[fpvGroup] = b.dataset.k;
+  else if (b.dataset.rz === 'd') realD = !realD; else if (b.dataset.rz === 's') realS = !realS;
+  else if (b.dataset.ts) TS = +b.dataset.ts;
+  fpvUi();
+};
+$('fpvGo').onclick = $('fpvMiniGo').onclick = () => { launchArm = !launchArm; fpvUi(); };
+$('fpvMin').onclick = minFpv; $('fpvMiniOpen').onclick = openFpv; $('fpvX').onclick = $('fpvMiniX').onclick = closeFpv;
+$('fpvUndo').onclick = () => { if (units.length) removeUnit(units[units.length - 1]); };
+$('fpvClear').onclick = fpvClearAll;
+
+const KMODES = ['auto', 5, 10, 15, 0];
+$('killBtn').onclick = () => {
+  killMode = KMODES[(KMODES.indexOf(killMode) + 1) % KMODES.length];
+  $('killBtn').dataset.w = killMode || 'off'; $('killBtn').classList.toggle('off', !killMode); drawKill();
+};
+
+/* ============ 8c. ЗБЕРЕЖЕННЯ: у браузері або файлом ============ */
+const SAVE_KEY = 'dswar.save.v1';
+const snapshot = () => ({ v:1, dataKey, live, ru, gray, killManual, arrows: arrows.map(g => g._data), savedAt: new Date().toISOString() });
+function restore(d) {
+  if (!d || !d.ru) throw new Error('bad file');
+  ru = d.ru; gray = d.gray || null; live = !!d.live; dataKey = d.dataKey || dataKey; killManual = d.killManual || null;
+  ua = UA_REAL || UA_OUTLINE;
+  if (live && !UA_REAL) { try { ua = turf.union(turf.buffer(UA_OUTLINE, 40, { units:'kilometers' }), ru); } catch (e) {} }
+  arrows.forEach(g => map.removeLayer(g)); arrows.length = 0;
+  (d.arrows || []).forEach(a => a && addUserArrow(a.pts, a.col));
+  undoStack.length = 0; dirty = true;      // збережена карта не перезаписується автооновленням
+  render(); updateStats();
+}
+const sheetMsg = t => { $('saveMsg').textContent = t; };
+function saveInfo() {
+  try { const t = localStorage.getItem(SAVE_KEY); if (t) return 'Збережено в браузері: ' + new Date(JSON.parse(t).savedAt).toLocaleString('uk-UA'); } catch (e) {}
+  return 'Зберігається ваш фронт і стрілки';
+}
+$('saveBtn').onclick = () => { $('searchBox').classList.remove('show'); closeFpv(); $('saveSheet').classList.toggle('show'); sheetMsg(saveInfo()); };
+$('svLocal').onclick = () => {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot())); sheetMsg(saveInfo() + ' ✓'); }
+  catch (e) { sheetMsg('Не вдалося зберегти в браузері — скачайте файл'); }
+};
+$('ldLocal').onclick = () => {
+  try { const t = localStorage.getItem(SAVE_KEY); if (!t) return sheetMsg('Збережень у браузері немає'); restore(JSON.parse(t)); sheetMsg('Завантажено ✓'); }
+  catch (e) { sheetMsg('Помилка завантаження'); }
+};
+$('svFile').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot())], { type:'application/json' }));
+  a.download = `deepstate-sandbox-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000); sheetMsg('Файл скачано ✓');
+};
+$('ldFile').onclick = () => $('fileIn').click();
+$('fileIn').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { restore(JSON.parse(r.result)); sheetMsg('Файл відкрито ✓'); } catch (err) { sheetMsg('Цей файл не підходить'); } };
+  r.readAsText(f); e.target.value = '';
+};
+
+/* ============ 8d. ЩОДЕННЕ ОНОВЛЕННЯ З DEEPSTATE ============ */
+// Раз на годину (і при поверненні на вкладку) перевіряємо нові дані. Якщо ви вже міняли карту — не перезаписуємо.
+async function autoRefresh() {
+  lastCheck = Date.now();
+  if (dirty || animating || painting) return;
+  if (dataSrc === 'file') {   // нових файлів немає — не качаємо даремно
+    try { const n = await listNames(); if (n[0] && n[0].includes(dataKey.replace(/-/g, ''))) return; } catch (e) {}
+  }
+  const prev = dataKey, snap = { ru: clone(ru), gray: clone(gray) };
+  const ok = await loadFront(true);
+  if (!ok) { ru = snap.ru; gray = snap.gray; return; }
+  orig = { ru: clone(ru), gray: clone(gray) }; render(); updateStats(); idle(loadMovement);
+  if (dataKey !== prev) log(`Карта оновлена (${SOURCES[srcKey].name}): ${dataKey}`);
+}
+setInterval(autoRefresh, 3600e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastCheck > 3600e3) autoRefresh(); });
+
+/* ============ 8e. ЛІТАК: просто літає по карті; тапніть — його збито, він розвалюється у невеликому вибуху ============ */
+const JET_SVG = `<svg viewBox="0 0 100 100" class="jet-in" xmlns="http://www.w3.org/2000/svg">
+  <path d="M44 44 L7 72 L9 79 L44 67Z M56 44 L93 72 L91 79 L56 67Z" fill="#7b838b" stroke="#4b5258" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M44 80 L25 92 L27 97 L44 90Z M56 80 L75 92 L73 97 L56 90Z" fill="#7b838b" stroke="#4b5258" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M50 3 L54 20 L56 46 L58 70 L56 90 L50 97 L44 90 L42 70 L44 46 L46 20Z" fill="#9aa1a8" stroke="#4b5258" stroke-width="1.2" stroke-linejoin="round"/>
+  <rect x="5.5" y="66" width="3" height="18" rx="1.5" fill="#e8ebee" stroke="#4b5258" stroke-width=".8"/>
+  <rect x="91.5" y="66" width="3" height="18" rx="1.5" fill="#e8ebee" stroke="#4b5258" stroke-width=".8"/>
+  <ellipse cx="50" cy="31" rx="3.4" ry="8.5" fill="#26384a" opacity=".92"/>
+  <ellipse cx="50" cy="98" rx="3" ry="2.6" fill="#ff9a1f" opacity=".9"/>
+</svg>`;
+const jetIcon = L.divIcon({ className:'jet', iconSize:[44, 44], iconAnchor:[22, 22], html:JET_SVG });
+const JET_BOX = { s:44.6, n:52, w:22.5, e:40.3 };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const brg = (lat, lng, t) => (Math.atan2((t[1] - lng) * Math.cos(lat * Math.PI / 180), t[0] - lat) * 180 / Math.PI + 360) % 360;
+const newTarget = () => [rnd(JET_BOX.s + 1, JET_BOX.n - 1), rnd(JET_BOX.w + 2, JET_BOX.e - 2)];
+let jet = null, jetOn = true, jetKills = 0, jetLast = 0;
+
+function jetSpawn() {   // вилітає з краю карти й летить до випадкової точки
+  if (!jetOn || jet) return;
+  const B = JET_BOX, side = Math.floor(Math.random() * 4);
+  const st = side === 0 ? [B.s - 1, rnd(B.w, B.e)] : side === 1 ? [B.n + 1, rnd(B.w, B.e)] : side === 2 ? [rnd(B.s, B.n), B.w - 2] : [rnd(B.s, B.n), B.e + 2];
+  const tgt = newTarget();
+  const marker = L.marker(st, { icon:jetIcon, interactive:true, keyboard:false, bubblingMouseEvents:false, zIndexOffset:1000 }).addTo(map);
+  const trail = L.polyline([], { color:'#fff', weight:2, opacity:.45, interactive:false }).addTo(map);
+  jet = { lat:st[0], lng:st[1], hd:brg(st[0], st[1], tgt), tgt, marker, trail, pts:[], tAcc:0, alive:true };
+  marker.on('click', jetHit);
+}
+function jetStep(dt) {
+  const j = jet; if (!j || !j.alive) return;
+  const diff = ((brg(j.lat, j.lng, j.tgt) - j.hd + 540) % 360) - 180;                 // плавний поворот до цілі
+  j.hd = (j.hd + Math.max(-45 * dt, Math.min(45 * dt, diff)) + 360) % 360;
+  const km = 18 * dt, r = j.hd * Math.PI / 180;
+  j.lat += Math.cos(r) * km / 111; j.lng += Math.sin(r) * km / (111 * Math.cos(j.lat * Math.PI / 180));
+  if (Math.hypot(j.tgt[0] - j.lat, (j.tgt[1] - j.lng) * Math.cos(j.lat * Math.PI / 180)) * 111 < 60) j.tgt = newTarget();
+  j.marker.setLatLng([j.lat, j.lng]);
+  const el = j.marker.getElement(); if (el && el.firstChild) el.firstChild.style.transform = `rotate(${j.hd}deg)`;
+  j.tAcc += dt;
+  if (j.tAcc > .12) { j.tAcc = 0; j.pts.push([j.lat, j.lng]); if (j.pts.length > 16) j.pts.shift(); j.trail.setLatLngs(j.pts); }
+}
+function jetLoop(now) {
+  requestAnimationFrame(jetLoop);
+  const dt = Math.min(.1, (now - jetLast) / 1000); jetLast = now;
+  jetStep(dt);
+}
+requestAnimationFrame(jetLoop);
+
+function boomSound() {   // короткий глухий «бум» (потрібен дотик користувача — він є)
+  try {
+    const ac = boomSound.ac || (boomSound.ac = new (window.AudioContext || window.webkitAudioContext)());
+    const len = ac.sampleRate * .5, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf; f.type = 'lowpass'; f.frequency.value = 700; g.gain.value = .6;
+    src.connect(f); f.connect(g); g.connect(ac.destination); src.start();
+  } catch (e) { /* без звуку — не страшно */ }
+}
+function explode(ll, sc = 1) {   // спалах, вогняна куля, іскри, уламки, що розлітаються, і дим
+  let h = '<div class="b-flash"></div><div class="b-ball"></div>';
+  for (let i = 0; i < 10; i++) h += `<i class="b-spark" style="--a:${i * 36 + rnd(-10, 10)}deg;--d:${rnd(30, 56)}px"></i>`;
+  for (let i = 0; i < 7; i++) h += `<i class="b-deb" style="--dx:${rnd(-48, 48)}px;--dy:${rnd(-34, 10)}px;--r:${rnd(-420, 420)}deg;--w:${rnd(6, 13)}px;--h:${rnd(3, 6)}px"></i>`;
+  h += '<div class="b-smoke"></div>';
+  h = `<div class="sc" style="--s:${sc}">${h}</div>`;
+  const m = L.marker(ll, { icon:L.divIcon({ className:'boom', iconSize:[0, 0], html:h }), interactive:false, keyboard:false, zIndexOffset:2000 }).addTo(map);
+  setTimeout(() => map.removeLayer(m), 3000);
+}
+function jetHit() {
+  if (!jet || !jet.alive) return;
+  const j = jet; j.alive = false; jet = null;
+  const ll = j.marker.getLatLng();
+  map.removeLayer(j.marker); map.removeLayer(j.trail);
+  explode(ll); boomSound(); if (navigator.vibrate) navigator.vibrate([40, 30, 60]);
+  log(`✈ Літак збито (${++jetKills})`);
+  setTimeout(jetSpawn, 4000 + Math.random() * 3000);   // за кілька секунд з'явиться новий
+}
+$('jetBtn').onclick = () => {
+  jetOn = !jetOn; $('jetBtn').classList.toggle('off', !jetOn);
+  if (jetOn) jetSpawn();
+  else if (jet) { map.removeLayer(jet.marker); map.removeLayer(jet.trail); jet = null; }
+};
+jetSpawn();
+
+/* ============ 8f. ДЖЕРЕЛО КАРТИ: DeepState / Military Summary / Perfect War ============ */
+// DeepState працює з офіційного API/архіву. Для Military Summary і Perfect War відкритого фіду, який можна перевірити, немає,
+// тому адреса GeoJSON-фіду задається або тут (FEED_URLS), або в застосунку: ☰ → Джерело карти → вставити URL.
+// Фід має віддавати GeoJSON із полігонами окупованої території й дозволяти запити з браузера (CORS). Оновлюється щогодини, як DeepState.
+const SOURCES = { deepstate:{ name:'DeepState', url:'https://deepstatemap.live', tg:'deepstateua' }, milsum:{ name:'Military Summary', url:'https://militarysummary.com/map', tg:'militarysummary' }, perfectwar:{ name:'Perfect War', url:'https://www.google.com/maps/d/u/0/viewer?mid=1Zken1j_1Dx2OJBjovbyOHA4VzDb48U0&ll=50.03616961278353%2C35.95812787403779&z=7', tg:'PerfectWarMap' }, uamap:{ name:'UA Map', url:'https://map.ukrdailyupdate.com/?lat=42.749555&lng=-689.905701&z=5&d=20728&c=1&l=0', tg:'ukrdailyupdate' } };
+const FEED_URLS = { milsum:[], perfectwar:[], uamap:[] };   // ← сюди можна вписати адреси фідів за замовчуванням
+let srcKey = 'deepstate', srcEdit = '';
+try { const sv = localStorage.getItem('dswar.src'); if (SOURCES[sv]) srcKey = sv; } catch (e) {}
+const urlKey = k => 'dswar.url.' + k;
+const feedUrls = k => { let u = ''; try { u = localStorage.getItem(urlKey(k)) || ''; } catch (e) {} return [u].concat(FEED_URLS[k] || []).filter(Boolean); };
+const hashText = t => { let h = 5381; const st = Math.ceil(t.length / 2000); for (let i = 0; i < t.length; i += st) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + (h >>> 0).toString(36); };
+
+function classifyFeed(fc) {   // довільний GeoJSON: полігони без позначки «Україна» вважаємо окупованою територією
+  const rus = [], grays = [];
+  (fc.features || []).forEach(f => {
+    if (!f.geometry || !/Polygon/.test(f.geometry.type)) return;
+    const p = f.properties || {};
+    const n = [p.name, p.description, p.side, p.control, p.owner, p.status, p.type, p.fill, p.color].filter(Boolean).join(' ').toLowerCase();
+    if (/liber|звільн|освобож|ukrain|україн|зсу/.test(n) && !/occup|окуп|оккуп|russia|рф|росі/.test(n)) return;   // підконтрольне Україні — пропускаємо
+    f = turf.truncate(f, { precision:4, coordinates:2 });
+    if (/gr[ae]y|сір|сер|contested|спір/.test(n)) grays.push(f); else rus.push(f);
+  });
+  return { ru: mergePolys(rus), gray: mergePolys(grays) };
+}
+async function loadFeed(k, keep) {
+  let why = 'не вказано URL фіду';
+  for (const u of feedUrls(k)) {
+    try {
+      const r = await fetch(u, { cache:'no-cache', signal:AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined });
+      if (!r.ok) { why = 'HTTP ' + r.status; continue; }
+      const text = await r.text(), gj = JSON.parse(text);
+      const res = classifyFeed(gj.features ? gj : { features:[gj] });
+      if (!res.ru) { why = 'у фіді немає полігонів'; continue; }
+      const lm = r.headers.get('last-modified'), d = lm ? new Date(lm) : null, hasD = d && !isNaN(d);
+      const key = (hasD ? d.toISOString().slice(0, 10) + '|' : '') + hashText(text);
+      if (keep && key === dataKey && dataSrc === 'feed') return true;      // нічого нового
+      dsLayer.clearLayers(); dsCount = 0; attackLines = []; hotCache = null; moveZone = null; moveKey = '';   // лінії наступу й рух — лише з DeepState
+      const label = hasD ? `дані за ${d.toLocaleDateString('uk-UA')}` : `оновлено ${new Date().toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit' })}`;
+      applyFront(res, `${SOURCES[k].name} · ${label}`, true, key); dataSrc = 'feed';
+      return true;
+    } catch (e) { why = String(e.message || e); }
+  }
+  srcMsg(`«${SOURCES[k].name}»: не вдалося завантажити (${why}). Перевірте URL: фід має бути GeoJSON і відкритий для браузера (CORS).`);
+  setStatus(`Не вдалося оновити «${SOURCES[k].name}»`, '#f0ad4e');
+  return false;
+}
+async function loadFront(keep) {   // завантаження фронту з вибраного джерела
+  if (srcKey === 'deepstate') return loadLive(keep);
+  if (await loadFeed(srcKey, true)) return true;
+  if (keep) return false;
+  log(`${SOURCES[srcKey].name} не відповів — повертаюсь до DeepState`);   // старт із джерелом, що не відповідає
+  srcKey = 'deepstate'; renderSrcUi();
+  return loadLive(keep);
+}
+function srcMsg(t) { $('srcInfo').textContent = t; }
+function renderSrcUi() {
+  document.querySelectorAll('[data-src]').forEach(b => b.classList.toggle('on', b.dataset.src === srcKey));
+  const src = SOURCES[srcKey]; $('srcLink').textContent = src.url ? `📌 ${src.name}: ${src.url.replace('https://','').split('/')[0]}` : '';
+  const k = srcEdit || (srcKey !== 'deepstate' ? srcKey : '');
+  $('srcUrlRow').classList.toggle('hidden', !k);
+  if (k) { $('srcUrl').dataset.k = k; $('srcUrl').placeholder = `URL GeoJSON-фіду «${SOURCES[k].name}»`; try { $('srcUrl').value = localStorage.getItem(urlKey(k)) || ''; } catch (e) {} }
+}
+function showSrcModal(k) {
+  $('srcModalTitle').textContent = `Підключити «${SOURCES[k].name}»`;
+  $('srcModalUrl').value = ''; try { $('srcModalUrl').value = localStorage.getItem('dswar.url.'+k)||''; } catch(e){}
+  $('srcModal').style.display = 'flex'; $('srcModal').dataset.k = k;
+}
+$('srcModalCancel').onclick = () => { $('srcModal').style.display = 'none'; };
+$('srcModalOk').onclick = async () => {
+  const k = $('srcModal').dataset.k, u = $('srcModalUrl').value.trim();
+  if (!u) { $('srcModalUrl').style.borderColor='#f85149'; return; }
+  $('srcModalUrl').style.borderColor=''; $('srcModal').style.display='none';
+  try { localStorage.setItem('dswar.url.'+k, u); } catch(e){}
+  await setSource(k);
+};
+async function setSource(k) {
+  if (k === srcKey && k === 'deepstate') { renderSrcUi(); return; }
+  if (k !== 'deepstate' && !feedUrls(k).length) { showSrcModal(k); return; }
+  if (dirty && !confirm(`Змінити на «${SOURCES[k].name}»? Правки буде скинуто.`)) return;
+  const prev = srcKey, prevSt = statusNow.slice();
+  srcKey = k; renderSrcUi(); setStatus(`Завантаження: ${SOURCES[k].name}…`, '#58a6ff');
+  const ok = await loadFront(true);
+  if (!ok) { srcKey = prev; setStatus(prevSt[0], prevSt[1]); renderSrcUi(); return; }
+  try { localStorage.setItem('dswar.src', k); } catch(e){}
+  orig = { ru: clone(ru), gray: clone(gray) }; undoStack.length = 0; dirty = false;
+  killCache = null; simpCache = null; sideCache = null; hotCache = null;
+  render(); updateStats(); idle(loadMovement);
+  renderSrcUi(); srcMsg('Оновлюється автоматично щогодини'); log(`Джерело: ${SOURCES[k].name} · ${dataKey}`);
+}
+document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => setSource(b.dataset.src));
+$('srcUrlOk').onclick = async () => {
+  const k = $('srcUrl').dataset.k, u = $('srcUrl').value.trim(); if (!k) return;
+  try { if (u) localStorage.setItem(urlKey(k), u); else localStorage.removeItem(urlKey(k)); } catch (e) {}
+  if (!feedUrls(k).length) { srcMsg('Вставте адресу фіду'); return; }
+  const was = srcKey; if (was === k) srcKey = '';   // примусово перезавантажити те саме джерело з новим URL
+  await setSource(k);
+  if (!srcKey) srcKey = was;
+  renderSrcUi();
+};
+srcMsg('Оновлюється автоматично щогодини'); renderSrcUi();
+
+/* ============ 8g. МЕНЮ ☰ ============ */
+const closeMenu = () => { $('menu').classList.remove('show'); $('menuBtn').classList.remove('on'); };
+$('menuBtn').onclick = () => {
+  $('searchBox').classList.remove('show'); $('saveSheet').classList.remove('show');
+  $('menuBtn').classList.toggle('on', $('menu').classList.toggle('show'));
+};
+['searchBtn', 'saveBtn', 'fpvBtn'].forEach(id => $(id).addEventListener('click', closeMenu));   // відкрив іншу панель — меню ховаємо
+map.on('click', closeMenu);                                                                       // тап по карті теж ховає меню
+
+
+/* ============ 8h. ЗАФІКСУВАТИ + НОВИНИ ============ */
+let locked = false;
+function setLock(v, resetToOrig = false) {
+  locked = v;
+  $('lockBar').style.display = v ? 'flex' : 'none';
+  $('lockBtn').classList.toggle('on', v);
+  if (v) {
+    if (tool !== 'pan') setTool('pan');
+    if (resetToOrig && orig) {
+      ru = clone(orig.ru); gray = clone(orig.gray);
+      undoStack.length = 0; killManual = null;
+      arrows.forEach(g => map.removeLayer(g)); arrows.length = 0;
+      dirty = false; render(); updateStats();
+      log('🔒 Фіксація: скинуто до поточного фронту DeepState');
+    }
+  } else { log('✏ Малювання розблоковано'); }
+}
+$('lockBtn').onclick = () => setLock(!locked);
+$('lockOff').onclick = () => setLock(false);
+document.querySelectorAll('[data-tool]').forEach(b => {
+  b.addEventListener('click', e => {
+    if (locked && b.dataset.tool !== 'pan') {
+      e.stopImmediatePropagation();
+      log('🔒 Вимкніть фіксацію щоб малювати');
+    }
+  }, true);
+});
+
+/* ---- Новини: внутрішній модал + flyTo, без зовнішніх посилань ---- */
+const DS_EVENTS = [   // Готові події з реальних напрямків (оновлюються при loadLive)
+  { title:'Харківський напрямок', ll:[49.99,36.23], src:'DeepState', text:'Ситуація на Харківщині. Тиск ворога зберігається.' },
+  { title:'Донецький напрямок',   ll:[48.00,37.80], src:'DeepState', text:'Активні бойові дії у Донецькій області.' },
+  { title:'Запорізький напрямок', ll:[47.50,35.90], src:'DeepState', text:'Позиційні бої на Запоріжжі.' },
+  { title:'Херсонський напрямок', ll:[46.60,33.40], src:'DeepState', text:'Ситуація на лівому березі Херсонщини.' },
+  { title:'Луганський напрямок',  ll:[49.00,38.40], src:'DeepState', text:'Оперативна обстановка на Луганщині.' },
+  { title:'Куп\'янський напрямок',ll:[49.70,37.60], src:'DeepState', text:'Наступальні дії ворога на Куп\'янщині.' }
+];
+let dsDate = '', dsArea = 0;
+
+async function loadDsApiMeta() {
+  try {
+    const r = await fetch('https://deepstatemap.live/api/history/last', { signal:AbortSignal.timeout(6000) });
+    if (!r.ok) return;
+    const j = await r.json(); if (j.datetime) dsDate = new Date(j.datetime).toLocaleString('uk-UA');
+  } catch(e) {}
+}
+
+function openNewsModal(ev) {
+  $('newsModalTitle').textContent = '📍 ' + ev.title;
+  $('newsModalBody').innerHTML = `
+    <div style="color:#8b949e;font-size:11px;margin-bottom:6px">${ev.src}${dsDate ? ' · ' + dsDate : ''}</div>
+    <div>${ev.text.replace(/</g,'&lt;')}</div>`;
+  $('newsModal').style.display = 'flex';
+  $('newsModal')._ll = ev.ll;
+  setLock(true, true);
+}
+$('newsModalClose').onclick = () => { $('newsModal').style.display = 'none'; };
+$('newsModalFly').onclick = () => {
+  const ll = $('newsModal')._ll; if (ll) map.flyTo(ll, 9, { duration:1.4 });
+  $('newsModal').style.display = 'none';
+};
+$('newsModalLock').onclick = () => { $('newsModal').style.display = 'none'; setLock(true, true); };
+
+async function refreshNews() {
+  await loadDsApiMeta();
+  $('newsList').innerHTML = DS_EVENTS.map((ev, i) =>
+    `<div onclick="window._openNews(${i})" style="cursor:pointer;background:rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+       <div style="flex:1">
+         <div style="font-size:11px;color:#58a6ff;margin-bottom:2px">${ev.src}</div>
+         <div style="font-size:13px;font-weight:600">${ev.title}</div>
+         <div style="font-size:11px;color:#8b949e;margin-top:2px">${ev.text.slice(0,80)}…</div>
+       </div>
+       <span style="font-size:18px">▶</span>
+     </div>`).join('');
+  $('newsList').innerHTML += dsDate
+    ? `<div style="font-size:11px;color:#3fb950;padding:4px 2px">✅ DeepState: дані за ${dsDate}</div>`
+    : `<div style="font-size:11px;color:#8b949e;padding:4px 2px">Дата оновлення недоступна</div>`;
+}
+window._openNews = i => openNewsModal(DS_EVENTS[i]);
+
+let newsOpen = false;
+$('newsBtn').onclick = () => {
+  newsOpen = !newsOpen;
+  $('newsPanel').style.display = newsOpen ? 'flex' : 'none';
+  $('newsBtn').classList.toggle('on', newsOpen);
+  if (newsOpen) { setLock(true, true); refreshNews(); }
+};
+$('newsClose').onclick = () => { newsOpen = false; $('newsPanel').style.display = 'none'; $('newsBtn').classList.remove('on'); };
+$('newsRefresh').onclick = refreshNews;
+
+
+/* ============ 8i. ЛІНІЙКА ВІДСТАНІ ============ */
+const rulerCss = document.createElement('style');
+rulerCss.textContent = '.ruler-dot{width:10px;height:10px;background:#ffd166;border:2px solid #000;border-radius:50%;position:absolute;transform:translate(-50%,-50%);cursor:pointer} .ruler-lbl{background:rgba(13,17,23,.88);color:#ffd166;border:1px solid #ffd166;border-radius:6px;padding:1px 5px;font:600 11px system-ui;white-space:nowrap;position:absolute;transform:translate(-50%,-120%)}';
+document.head.appendChild(rulerCss);
+
+let rulerOn=false, rulerPts=[], rulerLine=null, rulerMks=[];
+const fmtDist = m => m<1000 ? `${Math.round(m)} м` : `${(m/1000).toFixed(2)} км`;
+function rulerTotal() { let d=0; for(let i=1;i<rulerPts.length;i++) d+=map.distance(rulerPts[i-1],rulerPts[i]); return d; }
+function rulerDraw() {
+  if(rulerLine) map.removeLayer(rulerLine);
+  rulerMks.forEach(m=>map.removeLayer(m)); rulerMks=[];
+  if(rulerPts.length<1) return;
+  if(rulerPts.length>1) {
+    rulerLine=L.polyline(rulerPts,{color:'#ffd166',weight:2.5,opacity:.9,dashArray:'6 4',interactive:false}).addTo(map);
+    let acc=0;
+    for(let i=1;i<rulerPts.length;i++){
+      const d=map.distance(rulerPts[i-1],rulerPts[i]); acc+=d;
+      const mid=L.latLng((rulerPts[i-1].lat+rulerPts[i].lat)/2,(rulerPts[i-1].lng+rulerPts[i].lng)/2);
+      const mk=L.marker(mid,{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:[0,0],html:`<div class="ruler-lbl">${fmtDist(d)}</div>`})}).addTo(map);
+      rulerMks.push(mk);
+    }
+  }
+  rulerPts.forEach((ll,i)=>{
+    const mk=L.marker(ll,{interactive:true,keyboard:false,draggable:true,icon:L.divIcon({className:'',iconSize:[0,0],html:'<div class="ruler-dot"></div>'})}).addTo(map);
+    mk.on('drag',()=>{ rulerPts[i]=mk.getLatLng(); rulerDraw(); $('rulerDist').textContent=fmtDist(rulerTotal()); });
+    rulerMks.push(mk);
+  });
+  $('rulerDist').textContent = rulerPts.length>1 ? `Разом: ${fmtDist(rulerTotal())}` : 'Тапайте точку';
+}
+function rulerClearAll(){
+  if(rulerLine){map.removeLayer(rulerLine);rulerLine=null;}
+  rulerMks.forEach(m=>map.removeLayer(m)); rulerMks=[]; rulerPts=[];
+  $('rulerDist').textContent='';
+}
+function rulerSetOn(v){
+  rulerOn=v; $('rulerBtn').classList.toggle('on',v); $('rulerBar').style.display=v?'flex':'none';
+  if(!v){rulerClearAll();}
+  else{map.dragging.enable(); if(tool!=='pan') setTool('pan');}
+}
+$('rulerBtn').onclick=()=>rulerSetOn(!rulerOn);
+$('rulerClear').onclick=()=>{rulerClearAll(); $('rulerDist').textContent='Тапайте точку';};
+map.on('click',e=>{
+  if(!rulerOn) return;
+  rulerPts.push(e.latlng); rulerDraw();
+});
+map.on('dblclick',e=>{
+  if(!rulerOn||rulerPts.length<2) return;
+  L.DomEvent.stop(e);
+  log(`📏 Виміряно: ${fmtDist(rulerTotal())} · ${rulerPts.length} точок`);
+  rulerSetOn(false);
+});
+
+
+/* ══════════════════════════════════════════════════════════
+   БІБЛІОТЕКА ТЕХНІКИ — дані та рендер
+══════════════════════════════════════════════════════════ */
+const LIB_DATA = [
+
+/* ── СЕРІЯ ГЕРАНЬ/ШАХЕД ── */
+{ id:'geran1', cat:'geran',
+  name:'Герань-1', alias:'Shahed-131', country:'🇷🇺 / 🇮🇷', flag:'🔴',
+  type:'Барражуючий боєприпас',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Shahed_131_and_Shahed_136_drones.jpg/640px-Shahed_131_and_Shahed_136_drones.jpg',
+  specs:{
+    range:'~900 км',
+    speed:'185 км/год (макс)',
+    cruise:'~165 км/год',
+    endurance:'~5–6 год',
+    warhead:'15 кг, осколково-фугасна',
+    guidance:'ІНС + GPS',
+    wingspan:'2.5 м',
+    weight:'~200 кг',
+    freq:'GPS L1/L2 + ІНС (автономний)',
+    note:'Менша версія Shahed-136. Основа для Герань-2'
+  }
+},
+{ id:'geran2', cat:'geran',
+  name:'Герань-2', alias:'Shahed-136', country:'🇷🇺 / 🇮🇷', flag:'🔴',
+  type:'Барражуючий боєприпас',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Shahed-136_%28cropped%29.jpg/480px-Shahed-136_%28cropped%29.jpg',
+  specs:{
+    range:'1800–2500 км',
+    speed:'185 км/год (макс)',
+    cruise:'~165 км/год',
+    endurance:'10–14 год',
+    warhead:'40–50 кг, ОФ',
+    guidance:'ІНС + GPS (ГЛОНАСС)',
+    wingspan:'2.5 м',
+    weight:'~200 кг',
+    freq:'GPS/ГЛОНАСС + ІНС',
+    note:'Поршневий двигун MD550. Масово застосовується проти України з 2022'
+  }
+},
+{ id:'geran3', cat:'geran',
+  name:'Герань-3', alias:'Shahed-238 (реактивний)', country:'🇷🇺 / 🇮🇷', flag:'🔴',
+  type:'Реактивний барражуючий боєприпас',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Shahed-238_drone.jpg/480px-Shahed-238_drone.jpg',
+  specs:{
+    range:'~1000 км',
+    speed:'500–600 км/год',
+    cruise:'~450 км/год',
+    endurance:'~2–3 год',
+    warhead:'50–60 кг',
+    guidance:'ІНС + GPS + оптична корекція',
+    wingspan:'~2.8 м',
+    weight:'~250 кг',
+    freq:'GPS/ГЛОНАСС',
+    note:'Реактивна версія на базі турбореактивного двигуна. Значно важча для перехоплення ЗРК'
+  }
+},
+{ id:'geran4', cat:'geran',
+  name:'Герань-4', alias:'Shahed (розширена версія)', country:'🇷🇺', flag:'🔴',
+  type:'Ударний БПЛА',
+  img:'',
+  specs:{
+    range:'~900 км',
+    speed:'~450 км/год',
+    cruise:'~380 км/год',
+    endurance:'~2.5 год',
+    warhead:'~60–80 кг',
+    guidance:'ІНС + GPS + ТВ-наведення (за деякими даними)',
+    wingspan:'~3.2 м',
+    weight:'~270 кг',
+    freq:'GPS/ГЛОНАСС',
+    note:'Модифікація з потенційно більшою БЧ. Публічних ТТХ мало — дані орієнтовні'
+  }
+},
+{ id:'geran5', cat:'geran',
+  name:'Герань-5', alias:'Shahed (далекобійна реактивна)', country:'🇷🇺', flag:'🔴',
+  type:'Далекобійний реактивний БПЛА',
+  img:'',
+  specs:{
+    range:'~1000+ км',
+    speed:'~580–620 км/год',
+    cruise:'~500 км/год',
+    endurance:'~2 год',
+    warhead:'~80 кг',
+    guidance:'ІНС + GPS + TERCOM (за деякими даними)',
+    wingspan:'~3 м',
+    weight:'~300 кг',
+    freq:'GPS/ГЛОНАСС + ІНС',
+    note:'Вдосконалена реактивна версія. ТТХ базуються на відкритих аналітичних оцінках'
+  }
+},
+
+/* ── УДАРНІ ТА КАМІКАДЗЕ ── */
+{ id:'fp1', cat:'strike',
+  name:'FP-1', alias:'Ukrainian long-range strike UAV', country:'🇺🇦 Україна', flag:'🔵',
+  type:'Ударний БПЛА далекої дії',
+  img:'',
+  specs:{
+    range:'700–1000 км',
+    speed:'~150–180 км/год',
+    cruise:'~140 км/год',
+    endurance:'~6–8 год',
+    warhead:'~15–30 кг',
+    guidance:'GPS + ІНС + оптична корекція',
+    wingspan:'~3.5 м',
+    weight:'~100 кг',
+    freq:'GPS + шифрований канал управління',
+    note:'Українська розробка. Застосовувалась для ударів по території РФ'
+  }
+},
+{ id:'an196', cat:'strike',
+  name:'Ан-196 "Лютий"', alias:'Shark UAV (UJ-22 Airborne)', country:'🇺🇦 Україна', flag:'🔵',
+  type:'Ударний/розвідувальний БПЛА',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/UJ-22_Airborne_UAV.jpg/480px-UJ-22_Airborne_UAV.jpg',
+  specs:{
+    range:'800 км',
+    speed:'~180 км/год (макс)',
+    cruise:'~120 км/год',
+    endurance:'~7+ год',
+    warhead:'~20 кг або 2× РПГ-7',
+    guidance:'GPS + автопілот + відеоканал',
+    wingspan:'~3.2 м',
+    weight:'~105 кг',
+    freq:'2.4 ГГц + FPV відео + GPS',
+    note:'Українська БПЛА "Акула". Здатна нести корисне навантаження до 20 кг'
+  }
+},
+{ id:'fpv7', cat:'strike',
+  name:'FPV-камікадзе 7"', alias:'7-inch racing frame + HE', country:'🇺🇦 / 🇷🇺', flag:'⚡',
+  type:'FPV-камікадзе (ударний)',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/FPV_attack_drone.jpg/480px-FPV_attack_drone.jpg',
+  specs:{
+    range:'5–10 км (радіо), 20+ км (оптоволокно)',
+    speed:'100–160 км/год',
+    cruise:'~80 км/год',
+    endurance:'~8–12 хв',
+    warhead:'200–500 г (РПГ-7, Ф-1, 40мм)',
+    guidance:'FPV відео + ручне, або оптоволокно',
+    wingspan:'~35 см (діагональ рами)',
+    weight:'~800 г – 1.5 кг',
+    freq:'5.8 ГГц відео + 868/915 МГц управління; оптоволокно — без радіо',
+    note:'Масово виготовляється в Україні та РФ. Оптоволоконні версії невразливі до РЕБ'
+  }
+},
+{ id:'lancet1', cat:'strike',
+  name:'Ланцет-1', alias:'ZALA Lancet-1', country:'🇷🇺 Росія', flag:'🔴',
+  type:'Барражуючий боєприпас (малий)',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Lancet_drone_2022.jpg/480px-Lancet_drone_2022.jpg',
+  specs:{
+    range:'~40 км',
+    speed:'80–110 км/год',
+    cruise:'~80 км/год',
+    endurance:'~30 хв',
+    warhead:'~1 кг кумулятивна/ОФ',
+    guidance:'ТВ-наведення + автопілот + GPS',
+    wingspan:'~0.6 м (X-образне)',
+    weight:'~5 кг',
+    freq:'Шифрований 868 МГц / супутниковий',
+    note:'Менша версія Ланцет-3. Призначена для легкоброньованих цілей і особового складу'
+  }
+},
+{ id:'lancet3', cat:'strike',
+  name:'Ланцет-3', alias:'ZALA Lancet-3', country:'🇷🇺 Росія', flag:'🔴',
+  type:'Барражуючий боєприпас (важкий)',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Lancet_drone_2022.jpg/480px-Lancet_drone_2022.jpg',
+  specs:{
+    range:'~40–60 км',
+    speed:'80–110 км/год',
+    cruise:'~95 км/год',
+    endurance:'~40 хв',
+    warhead:'~3 кг кумулятивна тандемна',
+    guidance:'ТВ-наведення + автопілот + GPS',
+    wingspan:'~0.95 м (X-образне)',
+    weight:'~12 кг',
+    freq:'Шифрований 868 МГц',
+    note:'Спроможна уражати танки, ЗСУ, радари. Пара Орлан-10 + Ланцет-3 — поширений тандем'
+  }
+},
+{ id:'vampyr', cat:'strike',
+  name:'"Вампір" / "Кажан"', alias:'Vampire / Bat multi-rotor', country:'🇺🇦 Україна', flag:'🔵',
+  type:'Ударний мультикоптер / нічний камікадзе',
+  img:'',
+  specs:{
+    range:'~10–15 км',
+    speed:'~60–80 км/год',
+    cruise:'~50 км/год',
+    endurance:'~20–35 хв',
+    warhead:'2–5 кг, скиди або контактна БЧ',
+    guidance:'FPV + GPS-наведення, нічне ТВ',
+    wingspan:'~1.2 м',
+    weight:'~8–12 кг',
+    freq:'5.8 ГГц + зашифрований канал',
+    note:'Важкий нічний дрон-камікадзе. Назва "Кажан" — через нічні місії'
+  }
+},
+
+/* ── РОЗВІДУВАЛЬНІ ── */
+{ id:'mavic3t', cat:'recon',
+  name:'DJI Mavic 3T', alias:'DJI Mavic 3 Thermal', country:'🇨🇳 Китай', flag:'⬜',
+  type:'Комерційний розвідувальний БПЛА',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/DJI_Mavic_3_Thermal_Enterprise.jpg/480px-DJI_Mavic_3_Thermal_Enterprise.jpg',
+  specs:{
+    range:'~15 км (сигнал O3 Enterprise)',
+    speed:'68 км/год (макс)',
+    cruise:'~40–50 км/год',
+    endurance:'~43 хв',
+    warhead:'Тепловізор IR + оптика 4/3" CMOS',
+    guidance:'GPS + Galileo + ГЛОНАСС + BeiDou',
+    wingspan:'~28 см (склад.)',
+    weight:'~920 г',
+    freq:'O3 Enterprise: 2.4/5.8 ГГц; дальність до 15 км',
+    note:'Масово використовується обома сторонами для розвідки та коригування вогню'
+  }
+},
+
+/* ── ППО / РЕБ ── */
+{ id:'pac3', cat:'sam',
+  name:'Patriot PAC-3 MSE', alias:'MIM-104F', country:'🇺🇸 США', flag:'🔵',
+  type:'ЗРК далекої дії',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Patriot_missile_launch_b.jpg/480px-Patriot_missile_launch_b.jpg',
+  specs:{
+    range:'~35 км (PAC-3 MSE: ~60 км)',
+    speed:'Ракета: Мах 4.1',
+    cruise:'—',
+    endurance:'—',
+    warhead:'Hit-to-kill + осколкова',
+    guidance:'ARH (активна радарна ГСН)',
+    wingspan:'—',
+    weight:'~316 кг (ракета)',
+    freq:'Радар AN/MPQ-65: S-діапазон',
+    note:'Основна протиракетна система ЗСУ. PAC-3 MSE ефективна проти ракет, частково — БПЛА'
+  }
+},
+{ id:'pac2', cat:'sam',
+  name:'Patriot PAC-2 GEM-T', alias:'MIM-104E', country:'🇺🇸 США', flag:'🔵',
+  type:'ЗРК далекої дії (протилітакова)',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Patriot_missile_launch_b.jpg/480px-Patriot_missile_launch_b.jpg',
+  specs:{
+    range:'~160 км',
+    speed:'Ракета: Мах 3.0',
+    cruise:'—',
+    endurance:'—',
+    warhead:'90 кг, осколкова + неконтактний підривач',
+    guidance:'TVM (Track-via-Missile) + командна',
+    wingspan:'—',
+    weight:'~914 кг (ракета)',
+    freq:'Радар AN/MPQ-53/65: S-діапазон',
+    note:'Ефективніша проти літаків та крилатих ракет. 8 ракет у TP-контейнері'
+  }
+},
+{ id:'nasams', cat:'sam',
+  name:'NASAMS', alias:'Norwegian AMRAAM Surface-to-Air Missile System', country:'🇺🇸🇳🇴', flag:'🔵',
+  type:'ЗРК середньої дальності',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/NASAMS_launcher.jpg/480px-NASAMS_launcher.jpg',
+  specs:{
+    range:'~50 км (AIM-120C)',
+    speed:'Ракета: Мах 3.5+',
+    cruise:'—',
+    endurance:'—',
+    warhead:'22 кг осколкова',
+    guidance:'ARH AIM-120C AMRAAM',
+    wingspan:'—',
+    weight:'~152 кг (ракета)',
+    freq:'Радар AN/TPY-2: X-діапазон',
+    note:'Відмінно збиває крилаті ракети та БПЛА. 3 пускові контейнери по 6 ракет'
+  }
+},
+{ id:'hawk', cat:'sam',
+  name:'HAWK Phase III', alias:'MIM-23 HAWK', country:'🇺🇸 США', flag:'🔵',
+  type:'ЗРК середньої дальності (застарілий)',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/HAWK_Missile_System.jpg/480px-HAWK_Missile_System.jpg',
+  specs:{
+    range:'~45 км',
+    speed:'Ракета: Мах 2.5',
+    cruise:'—',
+    endurance:'—',
+    warhead:'74 кг осколкова',
+    guidance:'SARH (напівактивна радарна)',
+    wingspan:'—',
+    weight:'~626 кг (ракета)',
+    freq:'Радар AN/MPQ-55: X-діапазон',
+    note:'Ефективна проти літаків та деяких ракет. Проти малих БПЛА — обмежено'
+  }
+},
+{ id:'samt', cat:'sam',
+  name:'SAMP/T (Mamba)', alias:'Aster-30 Block 1NT', country:'🇫🇷🇮🇹', flag:'🔵',
+  type:'ЗРК середньо-далекої дальності',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/SAMP-T_sistema_lancio.jpg/480px-SAMP-T_sistema_lancio.jpg',
+  specs:{
+    range:'~120 км',
+    speed:'Ракета: Мах 4.5',
+    cruise:'—',
+    endurance:'—',
+    warhead:'~15 кг осколкова',
+    guidance:'ARH (активна) + ІЧ-ГСН (фінальна)',
+    wingspan:'—',
+    weight:'~450 кг (ракета)',
+    freq:'Радар Arabel: X-діапазон + GaN АФАР',
+    note:'Здатна перехоплювати тактичні балістичні ракети. 8 ракет Aster-30 на пусковій'
+  }
+},
+{ id:'s400', cat:'sam',
+  name:'С-400 "Тріумф"', alias:'SA-21 Growler', country:'🇷🇺 Росія', flag:'🔴',
+  type:'ЗРС далекої дальності',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/S-400_Triumf_regiment.jpg/480px-S-400_Triumf_regiment.jpg',
+  specs:{
+    range:'~250 км (40Н6E: ~400 км)',
+    speed:'Ракета: Мах 14.6 (48Н6)',
+    cruise:'—',
+    endurance:'—',
+    warhead:'145 кг (48Н6ДМ)',
+    guidance:'ARH + ТВМ + пасивне наведення',
+    wingspan:'—',
+    weight:'~1800–1900 кг (48Н6)',
+    freq:'Радар 92Н6 Гравер: X-діапазон',
+    note:'Може уражати літаки, ракети, БПЛА. 16 ракет 48Н6 або 64 ракети 9М96Е на пусковій'
+  }
+},
+{ id:'s300v4', cat:'sam',
+  name:'С-300В4', alias:'SA-23 Giant/Gladiator', country:'🇷🇺 Росія', flag:'🔴',
+  type:'ЗРС протибалістичної оборони',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/S-300V4_complex.jpg/480px-S-300V4_complex.jpg',
+  specs:{
+    range:'~200 км (9М82МВ)',
+    speed:'Ракета: Мах 7.5',
+    cruise:'—',
+    endurance:'—',
+    warhead:'150 кг осколково-направлена',
+    guidance:'ARH + SARH',
+    wingspan:'—',
+    weight:'~5800 кг (9М82МВ)',
+    freq:'Радар 9С15М2 (UHF): огляд; 9С19М2: наведення',
+    note:'Орієнтована на перехоплення балістичних ракет. Гусенична рухома платформа'
+  }
+},
+
+/* ── БРОНЕТЕХНІКА (заглушки для структури) ── */
+{ id:'t90m', cat:'armor',
+  name:'Т-90М "Прорив-3"', alias:'T-90M Proryv', country:'🇷🇺 Росія', flag:'🔴',
+  type:'Основний бойовий танк',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/T-90M_Proryv-3_MTO-2022_%28cropped%29.jpg/480px-T-90M_Proryv-3_MTO-2022_%28cropped%29.jpg',
+  specs:{
+    range:'~550 км (по шосе)',
+    speed:'60–70 км/год',
+    cruise:'~45 км/год',
+    endurance:'~8 год (паливо)',
+    warhead:'125-мм гармата 2А46М-5; БК 42 пос.',
+    guidance:'Тепловізійний ПТС "Сосна-У"; КА "Реліктовий"',
+    wingspan:'—',
+    weight:'46.5 т',
+    freq:'Р-168-25УЕ-2 (радіо); активна КАЗ "Арена-М"',
+    note:'Покращена бронезахист + ДЗ "Реліктовий" 3-го покоління'
+  }
+},
+{ id:'bmp3', cat:'armor',
+  name:'БМП-3', alias:'BMP-3', country:'🇷🇺 Росія', flag:'🔴',
+  type:'Бойова машина піхоти',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/BMP-3_-_Technics_on_Poklonnaya_hill_IMG_7888.JPG/480px-BMP-3_-_Technics_on_Poklonnaya_hill_IMG_7888.JPG',
+  specs:{
+    range:'~600 км',
+    speed:'70 км/год (шосе), 10 км/год (вода)',
+    cruise:'~40 км/год',
+    endurance:'~7–8 год',
+    warhead:'100-мм гармата + 30-мм гармата 2А72 + ПТРК 9К116-3',
+    guidance:'ТВ-прицілювання 1К13-2; лазерне наведення ПТУР',
+    wingspan:'—',
+    weight:'18.7 т',
+    freq:'Р-173: УКХ-радіо',
+    note:'Плаваюча. Поширена у РФ. Вразлива для БПЛА зверху (тонка броня даху)'
+  }
+},
+{ id:'himars', cat:'armor',
+  name:'M142 HIMARS', alias:'High Mobility Artillery Rocket System', country:'🇺🇸 США', flag:'🔵',
+  type:'Реактивна система залпового вогню',
+  img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/HIMARS_-_M142_High_Mobility_Artillery_Rocket_System.jpg/480px-HIMARS_-_M142_High_Mobility_Artillery_Rocket_System.jpg',
+  specs:{
+    range:'~70 км (GMLRS), ~300 км (ATACMS)',
+    speed:'85 км/год (по шосе)',
+    cruise:'—',
+    endurance:'—',
+    warhead:'90 кг (GMLRS M31); 227 кг (ATACMS)',
+    guidance:'GPS + ІНС (CEP ~2–10 м)',
+    wingspan:'—',
+    weight:'~16.2 т',
+    freq:'SINCGARS: 30–88 МГц; GPS L1/L2',
+    note:'Ключова система ЗСУ. 6 ракет GMLRS або 1 ATACMS. Завантаження ~5 хв'
+  }
+}
+];
+
+/* ──── Рендер бібліотеки ──── */
+const catColors = {
+  geran:['#c0392b','#2d0a09'], strike:['#e67e22','#2d1a06'],
+  recon:['#2ecc71','#062d14'], sam:['#2980b9','#061e2d'],
+  armor:['#7f8c8d','#141818']
+};
+const catNames = {
+  geran:'Серія Герань / Шахед', strike:'Ударні та Камікадзе',
+  recon:'Розвідувальні БПЛА', sam:'ППО та РЕБ', armor:'Бронетехніка'
+};
+function libCard(d) {
+  const [accent, bg] = catColors[d.cat] || ['#888','#111'];
+  const imgHtml = d.img
+    ? `<img class="lcard-img" src="${d.img}" alt="${d.name}"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+           loading="lazy">
+       <div class="lcard-img-ph" style="display:none">
+         <span style="font-size:36px">${d.flag}</span>
+         <span style="font-size:12px;color:#6e7681">${d.name}</span>
+       </div>`
+    : `<div class="lcard-img-ph">
+         <span style="font-size:36px">${d.flag}</span>
+         <span style="font-size:13px;color:#6e7681;font-weight:600">${d.name}</span>
+         <span style="font-size:11px;color:#444">Фото відсутнє</span>
+       </div>`;
+  return `<div class="lcard" data-cat="${d.cat}" data-name="${(d.name+d.alias).toLowerCase()}">
+    ${imgHtml}
+    <div class="lcard-body">
+      <div>
+        <span class="lbadge" style="background:${bg};color:${accent};border:1px solid ${accent}33">${catNames[d.cat]}</span>
+        <div style="font-size:10px;color:#6e7681;margin-top:3px">${d.country}</div>
+      </div>
+      <div>
+        <div class="lcard-title">${d.name}</div>
+        <div class="lcard-alias">${d.alias} · ${d.type}</div>
+      </div>
+      <div class="lcard-specs">
+        <div class="lspec">📡 Дальність<br><b>${d.specs.range}</b></div>
+        <div class="lspec">⚡ Швидкість<br><b>${d.specs.speed}</b></div>
+        <div class="lspec">✈ Крейс.<br><b>${d.specs.cruise}</b></div>
+        <div class="lspec">⏱ Автономність<br><b>${d.specs.endurance}</b></div>
+        <div class="lspec">💥 Бойова частина<br><b>${d.specs.warhead}</b></div>
+        <div class="lspec">🛰 Наведення/зв'язок<br><b>${d.specs.guidance}</b></div>
+        ${d.specs.wingspan !== '—' ? `<div class="lspec">📐 Розмах<br><b>${d.specs.wingspan}</b></div>` : ''}
+        ${d.specs.weight !== '—' ? `<div class="lspec">⚖ Маса<br><b>${d.specs.weight}</b></div>` : ''}
+      </div>
+      <div class="lcard-footer">📶 ${d.specs.freq}</div>
+      ${d.specs.note ? `<div style="font-size:11.5px;color:#8b949e;line-height:1.5;border-top:1px solid #21262d;padding-top:6px">ℹ️ ${d.specs.note}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderLib(cat='all', q='') {
+  const grid = $('libGrid');
+  let items = LIB_DATA.filter(d =>
+    (cat === 'all' || d.cat === cat) &&
+    (!q || d.name.toLowerCase().includes(q) || d.alias.toLowerCase().includes(q))
+  );
+  if (!items.length) { grid.innerHTML = '<div style="color:#6e7681;padding:20px">Нічого не знайдено</div>'; return; }
+  // Group by category with section headers (only when "all")
+  if (cat === 'all' && !q) {
+    const byCat = {};
+    items.forEach(d => { (byCat[d.cat] = byCat[d.cat] || []).push(d); });
+    const ORDER = ['geran','strike','recon','sam','armor'];
+    grid.innerHTML = ORDER.filter(c => byCat[c]).map(c =>
+      `<div class="lsec-hdr">${catNames[c]}</div>` + byCat[c].map(libCard).join('')
+    ).join('');
+  } else {
+    grid.innerHTML = items.map(libCard).join('');
+  }
+}
+
+/* Контроли */
+let libCat = 'all', libQ = '';
+document.querySelectorAll('.ltab').forEach(b => b.onclick = () => {
+  libCat = b.dataset.cat;
+  document.querySelectorAll('.ltab').forEach(x => x.classList.toggle('on', x === b));
+  renderLib(libCat, libQ);
+});
+$('libSearch').oninput = e => { libQ = e.target.value.toLowerCase().trim(); renderLib(libCat, libQ); };
+$('libBtn').onclick = () => { $('libModal').style.display = 'flex'; renderLib(libCat, libQ); closeMenu(); };
+$('libClose').onclick = () => { $('libModal').style.display = 'none'; };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('libModal').style.display = 'none'; });
+
+/* ============ 9. СТАРТ ============ */
+(async () => {
+  await loadFront();
+  orig = { ru: JSON.parse(JSON.stringify(ru)), gray: gray && JSON.parse(JSON.stringify(gray)) };
+  restoreVillages();
+  render(); updateStats();
+  idle(loadMovement); idle(loadBorders); idle(loadUkraine); idle(loadWorld);
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════
+     БІБЛІОТЕКА ТЕХНІКИ
+════════════════════════════════════════════════════════ -->
+<div id="libModal" style="
+  display:none;position:fixed;inset:0;z-index:4000;
+  background:rgba(5,8,12,.96);flex-direction:column;overflow:hidden">
+
+  <!-- header -->
+  <div style="flex:0 0 auto;padding:12px 16px;background:#0d1117;border-bottom:1px solid #21262d;
+              display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font:700 16px system-ui;color:#e6edf3">📚 Бібліотека техніки</span>
+    <!-- category tabs -->
+    <div id="libTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-left:4px">
+      <button class="ltab on" data-cat="all">Всі</button>
+      <button class="ltab" data-cat="geran">🔴 Серія Герань</button>
+      <button class="ltab" data-cat="strike">💥 Ударні / Камікадзе</button>
+      <button class="ltab" data-cat="recon">👁 Розвідка</button>
+      <button class="ltab" data-cat="sam">🛡 ППО / РЕБ</button>
+      <button class="ltab" data-cat="armor">🔩 Бронетехніка</button>
+    </div>
+    <!-- search -->
+    <input id="libSearch" type="search" placeholder="Пошук…" autocomplete="off"
+      style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid #30363d;
+             background:#161b22;color:#e6edf3;font-size:13px;width:160px">
+    <button id="libClose" style="background:none;border:none;color:#8b949e;font-size:22px;
+             cursor:pointer;line-height:1;padding:0 4px">✕</button>
+  </div>
+
+  <!-- cards grid -->
+  <div id="libGrid" style="flex:1;overflow-y:auto;padding:16px;
+    display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+  </div>
+</div>
+
+<style>
+/* Library styles */
+.ltab{background:rgba(255,255,255,.06);border:1px solid #30363d;border-radius:20px;
+  padding:4px 12px;font:600 12px system-ui;color:#8b949e;cursor:pointer;transition:.15s}
+.ltab.on,.ltab:hover{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.lcard{background:#161b22;border:1px solid #21262d;border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column;transition:.2s}
+.lcard:hover{border-color:#388bfd;transform:translateY(-2px);box-shadow:0 6px 24px rgba(56,139,253,.15)}
+.lcard-img{width:100%;height:160px;object-fit:cover;background:#0d1117;display:block}
+.lcard-img-ph{width:100%;height:160px;background:linear-gradient(135deg,#0d1117 0%,#161b22 100%);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.lcard-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:8px}
+.lcard-title{font:700 15px system-ui;color:#e6edf3;line-height:1.3}
+.lcard-alias{font:400 12px system-ui;color:#8b949e;margin-top:1px}
+.lbadge{display:inline-block;padding:2px 8px;border-radius:10px;font:600 10px system-ui;letter-spacing:.04em}
+.lcard-specs{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:2px}
+.lspec{font-size:11.5px;color:#8b949e;line-height:1.5}
+.lspec b{color:#c9d1d9;font-weight:600}
+.lcard-footer{margin-top:auto;padding-top:8px;border-top:1px solid #21262d;
+  font-size:11px;color:#6e7681}
+/* Category section headers in grid */
+.lsec-hdr{grid-column:1/-1;padding:6px 2px 4px;font:700 12px system-ui;
+  letter-spacing:.1em;text-transform:uppercase;color:#6e7681;border-bottom:1px solid #21262d}
+@media(max-width:520px){
+  .lcard-specs{grid-template-columns:1fr}
+  #libGrid{grid-template-columns:1fr;padding:10px}
+  .ltab{font-size:11px;padding:3px 9px}
+}
+</style>
+
+</body>
+</html>
